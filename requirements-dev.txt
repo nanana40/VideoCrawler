@@ -1,0 +1,16 @@
+# =====================================================
+# MultiLangVideoCrawler 开发全量依赖
+# Python 3.11+
+# 包含 runtime 全部依赖 + 类型检测 + 打包工具
+# 安装命令: pip install -r requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# =====================================================
+
+# 运行时基础依赖（直接引用 runtime 清单）
+-r requirements-runtime.txt
+
+# ---------- 类型检测 ----------
+types-PyYAML>=6.0.12.11  # pyyaml 类型存根
+mypy>=1.7.0              # 静态类型检查
+
+# ---------- 打包相关 ----------
+nuitka>=1.9.0            # 打包为独立EXE

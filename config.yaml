@@ -1,0 +1,49 @@
+# =====================================================
+# MultiLangVideoCrawler 全局业务配置
+# 敏感密钥请存放于 api_secret.yaml.enc，通过 crypto_util 解密读取
+# 路径配置统一通过 utils/path_helper.py 获取，禁止在此硬编码路径
+# =====================================================
+
+# 爬虫配置
+crawler:
+  enable_tls_finger: true        # 是否启用TLS指纹反爬（curl_cffi）
+  request_delay: 2.0             # 请求间隔秒数，防封禁
+  max_crawl_page: 10             # 单关键词最大采集页数
+  ua_pool: []                    # User-Agent池，为空则使用默认
+  proxy: ""                      # 代理地址，示例：http://127.0.0.1:7890
+
+# 下载配置
+download:
+  max_download_thread: 3         # 最大并发下载线程数
+
+# 数据库缓冲配置
+db_buffer:
+  batch_write_size: 50           # 批量写入阈值（条数）
+  flush_interval: 3              # 定时刷盘间隔（秒）
+
+# 字幕翻译对接配置
+subtitle:
+  mode: "api"                    # 对接模式：api / folder（对应 SubtitleMode 枚举）
+  api_url: "http://127.0.0.1:7861/api/subtitle"   # 翻译API地址
+  ping_interval: 30              # 健康检测ping间隔（秒）
+  max_concurrent_task: 2         # 最大并发翻译任务数
+  max_task_timeout: 600          # 单任务超时时间（秒）
+  file_stable_wait: 2            # 文件大小稳定检测间隔（秒）
+  max_file_wait: 15              # 文件最大等待时间（秒）
+  target_lang: "zh-CN"           # 翻译目标语言
+  sub_format: "srt"              # 字幕格式
+
+# 调度器配置
+scheduler:
+  enable_memory_warn: true       # 是否启用内存告警
+  memory_threshold_mb: 2048      # 内存告警阈值（MB）
+  auto_clear_expire_days: 30     # 自动清理过期数据天数
+
+# 日志配置
+log:
+  log_level: "INFO"              # 日志级别：DEBUG / INFO / WARNING / ERROR
+
+# AI分类配置
+classify:
+  api_url: ""                    # 在线分类API地址
+  cache_ttl: 86400               # 分类结果缓存时长（秒）
