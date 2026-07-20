@@ -6,29 +6,26 @@
     2. CrawlerAdapter - 适配器接口，定义标准爬虫方法
     3. GenericCrawler - 通用爬虫实现，支持接入开源爬虫代码
 
-使用方式：
-    # 使用指纹引擎直接请求
-    engine = FingerprintCrawler()
-    html = engine.request("https://example.com")
-    
-    # 使用适配器接入开源爬虫
-    class MyOpenSourceCrawler(CrawlerAdapter):
-        def parse(self, html):
-            # 复制开源爬虫的解析逻辑
-            pass
-    
-    crawler = MyOpenSourceCrawler()
-    videos = crawler.crawl("https://example.com")
+Day5 增强功能：
+    - 分页采集：支持多种分页策略（URL参数、路径、AJAX）
+    - 结果临时缓冲：爬取结果写入临时文件，避免内存溢出
+    - 去重机制：URL 去重、视频去重
+    - 中断恢复：支持断点续爬
+    - 进度跟踪：实时记录爬取进度
 """
 
 import random
 import time
-from typing import Optional, Dict, List, Any, Tuple, Callable
+import json
+import os
+import hashlib
+from typing import Optional, Dict, List, Any, Tuple, Callable, Set
 from abc import ABC, abstractmethod
 
 from utils.enums import LogTag, LanguageType
 from utils.logger import get_crawler_logger, get_error_logger
 from utils.config_loader import load_config, get_crawler_config
+from utils.path_helper import get_tmp_dir, make_tmp_file, clear_tmp_dir
 
 
 logger = get_crawler_logger()
@@ -81,16 +78,11 @@ class FingerprintCrawler:
             User-Agent 列表
         """
         return [
-            # Chrome Windows
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-            # Chrome macOS
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            # Firefox Windows
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-            # Edge Windows
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
-            # Safari macOS
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
         ]
     
@@ -148,20 +140,16 @@ class FingerprintCrawler:
         if retries is None:
             retries = self._max_retries
         
-        # 添加请求延时（首次请求前也添加）
         self._add_delay()
         
         for attempt in range(retries):
             try:
-                # 构建请求头
                 if headers is None:
                     headers = {}
                 
-                # 添加 UA
                 if "User-Agent" not in headers:
                     headers["User-Agent"] = self._rotate_ua()
                 
-                # 添加其他常见请求头
                 default_headers = {
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
                     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -183,7 +171,6 @@ class FingerprintCrawler:
                 
                 logger.debug(f"请求: {method} {url} (attempt {attempt + 1}/{retries})")
                 
-                # 使用 curl_cffi 发送请求
                 if self._enable_tls_finger:
                     response = self._curl_request(url, method, headers, data, params, timeout)
                 else:
@@ -213,19 +200,7 @@ class FingerprintCrawler:
         params: Optional[Dict[str, Any]],
         timeout: int
     ) -> Optional[str]:
-        """使用 curl_cffi 发送请求（带 TLS 指纹）
-        
-        Args:
-            url: 请求 URL
-            method: HTTP 方法
-            headers: 请求头
-            data: POST 数据
-            params: URL 参数
-            timeout: 超时时间
-        
-        Returns:
-            响应内容
-        """
+        """使用 curl_cffi 发送请求（带 TLS 指纹）"""
         try:
             from curl_cffi import requests
             
@@ -239,10 +214,8 @@ class FingerprintCrawler:
             
             if params:
                 kwargs["params"] = params
-            
             if data:
                 kwargs["data"] = data
-            
             if self._proxy:
                 kwargs["proxies"] = {
                     "http": self._proxy,
@@ -251,7 +224,6 @@ class FingerprintCrawler:
             
             response = requests.request(**kwargs)
             response.raise_for_status()
-            
             return response.text
         
         except ImportError:
@@ -270,19 +242,7 @@ class FingerprintCrawler:
         params: Optional[Dict[str, Any]],
         timeout: int
     ) -> Optional[str]:
-        """使用标准库 requests 发送请求（降级方案）
-        
-        Args:
-            url: 请求 URL
-            method: HTTP 方法
-            headers: 请求头
-            data: POST 数据
-            params: URL 参数
-            timeout: 超时时间
-        
-        Returns:
-            响应内容
-        """
+        """使用标准库 requests 发送请求（降级方案）"""
         try:
             import requests as std_requests
             
@@ -295,10 +255,8 @@ class FingerprintCrawler:
             
             if params:
                 kwargs["params"] = params
-            
             if data:
                 kwargs["data"] = data
-            
             if self._proxy:
                 kwargs["proxies"] = {
                     "http": self._proxy,
@@ -307,7 +265,6 @@ class FingerprintCrawler:
             
             response = std_requests.request(**kwargs)
             response.raise_for_status()
-            
             return response.text
         
         except ImportError:
@@ -318,28 +275,11 @@ class FingerprintCrawler:
             return None
     
     def get(self, url: str, **kwargs) -> Optional[str]:
-        """发送 GET 请求（便捷方法）
-        
-        Args:
-            url: 请求 URL
-            **kwargs: 其他参数
-        
-        Returns:
-            响应内容
-        """
+        """发送 GET 请求（便捷方法）"""
         return self.request(url, method="GET", **kwargs)
     
     def post(self, url: str, data: Dict[str, Any], **kwargs) -> Optional[str]:
-        """发送 POST 请求（便捷方法）
-        
-        Args:
-            url: 请求 URL
-            data: POST 数据
-            **kwargs: 其他参数
-        
-        Returns:
-            响应内容
-        """
+        """发送 POST 请求（便捷方法）"""
         return self.request(url, method="POST", data=data, **kwargs)
     
     @property
@@ -369,6 +309,299 @@ class FingerprintCrawler:
 
 
 # =====================================================
+# 结果临时缓冲器 - ResultBuffer
+# =====================================================
+
+class ResultBuffer:
+    """
+    爬取结果临时缓冲器
+    
+    功能：
+        1. 将爬取结果写入临时文件，避免内存溢出
+        2. 支持批量写入，提高 IO 效率
+        3. 支持断点续爬，从中断点恢复
+        4. 支持去重机制
+    """
+    
+    def __init__(self, buffer_size: int = 100, temp_dir: Optional[str] = None) -> None:
+        """初始化结果缓冲器
+        
+        Args:
+            buffer_size: 缓冲区大小，达到后自动写入文件
+            temp_dir: 临时文件目录
+        """
+        if temp_dir is None:
+            temp_dir = get_tmp_dir()
+        
+        self._buffer_size = buffer_size
+        self._temp_dir = temp_dir
+        self._buffer: List[Dict[str, Any]] = []
+        self._seen_urls: Set[str] = set()
+        self._seen_titles: Set[str] = set()
+        self._total_count = 0
+        self._file_count = 0
+        self._current_file: Optional[str] = None
+        
+        logger.info(f"结果缓冲器初始化完成，缓冲区大小={buffer_size}")
+    
+    def _generate_file_name(self) -> str:
+        """生成临时文件名"""
+        self._file_count += 1
+        return os.path.join(self._temp_dir, f"crawl_result_{self._file_count:04d}.json")
+    
+    def _write_buffer(self) -> None:
+        """将缓冲区写入临时文件"""
+        if not self._buffer:
+            return
+        
+        if self._current_file is None:
+            self._current_file = self._generate_file_name()
+        
+        try:
+            with open(self._current_file, "a", encoding="utf-8") as f:
+                for item in self._buffer:
+                    f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            
+            logger.debug(f"缓冲区写入文件: {self._current_file}, 数量={len(self._buffer)}")
+            
+            self._buffer = []
+            self._current_file = None
+            
+        except Exception as e:
+            error_logger.error(f"缓冲区写入失败: {e}")
+    
+    def add(self, item: Dict[str, Any]) -> bool:
+        """添加一条爬取结果
+        
+        Args:
+            item: 爬取结果字典
+        
+        Returns:
+            True表示添加成功，False表示已去重
+        """
+        source_url = item.get("source_url", "")
+        title = item.get("title", "")
+        
+        # URL 去重
+        if source_url and source_url in self._seen_urls:
+            logger.debug(f"URL 已存在，跳过: {source_url[:50]}...")
+            return False
+        
+        # 标题去重（使用 MD5）
+        if title:
+            title_hash = hashlib.md5(title.encode("utf-8")).hexdigest()
+            if title_hash in self._seen_titles:
+                logger.debug(f"标题已存在，跳过: {title[:30]}...")
+                return False
+            self._seen_titles.add(title_hash)
+        
+        if source_url:
+            self._seen_urls.add(source_url)
+        
+        self._buffer.append(item)
+        self._total_count += 1
+        
+        # 达到缓冲区大小，写入文件
+        if len(self._buffer) >= self._buffer_size:
+            self._write_buffer()
+        
+        return True
+    
+    def add_batch(self, items: List[Dict[str, Any]]) -> int:
+        """批量添加爬取结果
+        
+        Args:
+            items: 爬取结果列表
+        
+        Returns:
+            实际添加的数量（去重后）
+        """
+        count = 0
+        for item in items:
+            if self.add(item):
+                count += 1
+        return count
+    
+    def flush(self) -> None:
+        """强制刷新缓冲区，写入所有剩余数据"""
+        self._write_buffer()
+        logger.info(f"缓冲区刷新完成，总记录数={self._total_count}")
+    
+    def get_all_results(self) -> List[Dict[str, Any]]:
+        """读取所有临时文件中的结果
+        
+        Returns:
+            所有爬取结果列表
+        """
+        results = []
+        
+        # 读取已写入的文件
+        for file_num in range(1, self._file_count + 1):
+            file_path = os.path.join(self._temp_dir, f"crawl_result_{file_num:04d}.json")
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                results.append(json.loads(line))
+                except Exception as e:
+                    error_logger.error(f"读取临时文件失败: {file_path}, error={e}")
+        
+        # 读取缓冲区中未写入的数据
+        results.extend(self._buffer)
+        
+        return results
+    
+    def save_progress(self, url: str, page: int) -> None:
+        """保存爬取进度（用于断点续爬）
+        
+        Args:
+            url: 当前爬取的 URL
+            page: 当前页码
+        """
+        progress = {
+            "url": url,
+            "page": page,
+            "timestamp": time.time(),
+            "total_count": self._total_count,
+        }
+        
+        try:
+            progress_file = os.path.join(self._temp_dir, "crawl_progress.json")
+            with open(progress_file, "w", encoding="utf-8") as f:
+                json.dump(progress, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            error_logger.error(f"保存进度失败: {e}")
+    
+    def load_progress(self) -> Optional[Dict[str, Any]]:
+        """加载爬取进度（用于断点续爬）
+        
+        Returns:
+            进度信息，无进度时返回 None
+        """
+        progress_file = os.path.join(self._temp_dir, "crawl_progress.json")
+        if os.path.exists(progress_file):
+            try:
+                with open(progress_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                error_logger.error(f"加载进度失败: {e}")
+        
+        return None
+    
+    def clear_progress(self) -> None:
+        """清除进度文件"""
+        progress_file = os.path.join(self._temp_dir, "crawl_progress.json")
+        if os.path.exists(progress_file):
+            os.remove(progress_file)
+    
+    def clear(self) -> None:
+        """清空所有缓冲区数据"""
+        self._buffer = []
+        self._seen_urls.clear()
+        self._seen_titles.clear()
+        self._total_count = 0
+        self._file_count = 0
+        self._current_file = None
+        
+        # 删除临时文件
+        for file_num in range(1, self._file_count + 1):
+            file_path = os.path.join(self._temp_dir, f"crawl_result_{file_num:04d}.json")
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        self.clear_progress()
+    
+    @property
+    def total_count(self) -> int:
+        """获取总记录数"""
+        return self._total_count
+    
+    @property
+    def buffer_size(self) -> int:
+        """获取缓冲区大小"""
+        return self._buffer_size
+    
+    @property
+    def seen_urls(self) -> Set[str]:
+        """获取已访问的 URL 集合"""
+        return self._seen_urls
+
+
+# =====================================================
+# 分页策略枚举 - PaginationStrategy
+# =====================================================
+
+class PaginationStrategy:
+    """分页策略类"""
+    
+    @staticmethod
+    def url_param(base_url: str, page: int, param_name: str = "page") -> str:
+        """URL 参数分页（如 ?page=1）
+        
+        Args:
+            base_url: 基础 URL
+            page: 页码
+            param_name: 参数名
+        
+        Returns:
+            分页 URL
+        """
+        if "?" in base_url:
+            return f"{base_url}&{param_name}={page}"
+        else:
+            return f"{base_url}?{param_name}={page}"
+    
+    @staticmethod
+    def path_segment(base_url: str, page: int) -> str:
+        """路径分段分页（如 /page/1）
+        
+        Args:
+            base_url: 基础 URL
+            page: 页码
+        
+        Returns:
+            分页 URL
+        """
+        # 移除末尾的斜杠
+        base_url = base_url.rstrip("/")
+        return f"{base_url}/page/{page}"
+    
+    @staticmethod
+    def offset_limit(base_url: str, page: int, limit: int = 20) -> str:
+        """偏移量分页（如 ?offset=0&limit=20）
+        
+        Args:
+            base_url: 基础 URL
+            page: 页码
+            limit: 每页条数
+        
+        Returns:
+            分页 URL
+        """
+        offset = (page - 1) * limit
+        if "?" in base_url:
+            return f"{base_url}&offset={offset}&limit={limit}"
+        else:
+            return f"{base_url}?offset={offset}&limit={limit}"
+    
+    @staticmethod
+    def custom_pattern(base_url: str, page: int, pattern: str = "page-{page}") -> str:
+        """自定义模式分页
+        
+        Args:
+            base_url: 基础 URL
+            page: 页码
+            pattern: 自定义模式，{page} 会被替换为页码
+        
+        Returns:
+            分页 URL
+        """
+        return base_url + "/" + pattern.replace("{page}", str(page))
+
+
+# =====================================================
 # 爬虫适配器接口 - CrawlerAdapter
 # =====================================================
 
@@ -381,7 +614,7 @@ class CrawlerAdapter(ABC):
     
     使用方式：
         class MyOpenSourceCrawler(CrawlerAdapter):
-            def parse(self, html):
+            def parse(self, html, url):
                 # 复制开源爬虫的解析逻辑
                 videos = []
                 # ... 解析 html，提取视频信息 ...
@@ -391,17 +624,30 @@ class CrawlerAdapter(ABC):
         videos = crawler.crawl("https://example.com")
     """
     
-    def __init__(self, engine: Optional[FingerprintCrawler] = None) -> None:
+    def __init__(
+        self,
+        engine: Optional[FingerprintCrawler] = None,
+        buffer_size: int = 100,
+        enable_buffer: bool = True
+    ) -> None:
         """初始化适配器
         
         Args:
             engine: 指纹爬虫引擎，默认自动创建
+            buffer_size: 结果缓冲区大小
+            enable_buffer: 是否启用结果缓冲
         """
         if engine is None:
             engine = FingerprintCrawler()
         
         self._engine = engine
         self._logger = get_crawler_logger()
+        self._enable_buffer = enable_buffer
+        
+        if enable_buffer:
+            self._result_buffer = ResultBuffer(buffer_size)
+        else:
+            self._result_buffer = None
     
     @abstractmethod
     def parse(self, html: str, url: str) -> List[Dict[str, Any]]:
@@ -431,7 +677,8 @@ class CrawlerAdapter(ABC):
         url: str,
         headers: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, Any]] = None,
-        filter_languages: Optional[List[LanguageType]] = None
+        filter_languages: Optional[List[LanguageType]] = None,
+        use_buffer: bool = True
     ) -> List[Dict[str, Any]]:
         """
         爬取页面并解析视频信息
@@ -441,6 +688,7 @@ class CrawlerAdapter(ABC):
             headers: 请求头
             params: URL 参数
             filter_languages: 语言白名单，过滤非目标语言视频
+            use_buffer: 是否使用结果缓冲
         
         Returns:
             视频信息列表
@@ -448,20 +696,23 @@ class CrawlerAdapter(ABC):
         try:
             self._logger.info(f"开始爬取: {url}")
             
-            # 发送请求
             html = self._engine.get(url, headers=headers, params=params)
             
             if html is None:
                 self._logger.error(f"获取页面失败: {url}")
                 return []
             
-            # 解析页面
             videos = self.parse(html, url)
             self._logger.info(f"解析完成，获取 {len(videos)} 个视频")
             
-            # 语言过滤
             if filter_languages:
                 videos = self._filter_by_language(videos, filter_languages)
+            
+            # 写入缓冲区
+            if use_buffer and self._result_buffer:
+                added_count = self._result_buffer.add_batch(videos)
+                self._logger.info(f"添加到缓冲区 {added_count} 条（去重后）")
+                return videos
             
             return videos
         
@@ -476,10 +727,18 @@ class CrawlerAdapter(ABC):
         headers: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, Any]] = None,
         filter_languages: Optional[List[LanguageType]] = None,
-        get_next_page: Optional[Callable[[str, int], Optional[str]]] = None
+        pagination_strategy: Callable[[str, int], str] = PaginationStrategy.url_param,
+        resume_from_progress: bool = False,
+        use_buffer: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        分页爬取
+        分页爬取（增强版）
+        
+        功能：
+            - 支持多种分页策略
+            - 支持断点续爬
+            - 支持结果缓冲
+            - 支持去重
         
         Args:
             base_url: 基础 URL
@@ -487,36 +746,64 @@ class CrawlerAdapter(ABC):
             headers: 请求头
             params: URL 参数
             filter_languages: 语言白名单
-            get_next_page: 获取下一页 URL 的函数
+            pagination_strategy: 分页策略函数
+            resume_from_progress: 是否从断点恢复
+            use_buffer: 是否使用结果缓冲
         
         Returns:
             所有页面的视频信息列表
         """
         all_videos = []
+        start_page = 1
+        current_url = base_url
+        
+        # 尝试从断点恢复
+        if resume_from_progress and self._result_buffer:
+            progress = self._result_buffer.load_progress()
+            if progress:
+                start_page = progress.get("page", 1) + 1
+                current_url = progress.get("url", base_url)
+                self._logger.info(f"从断点恢复，从第 {start_page} 页开始")
         
         try:
-            current_url = base_url
-            for page in range(1, max_pages + 1):
+            for page in range(start_page, max_pages + 1):
                 self._logger.info(f"爬取第 {page}/{max_pages} 页: {current_url}")
                 
-                # 爬取当前页
-                videos = self.crawl(current_url, headers=headers, params=params, filter_languages=filter_languages)
+                videos = self.crawl(
+                    current_url,
+                    headers=headers,
+                    params=params,
+                    filter_languages=filter_languages,
+                    use_buffer=use_buffer
+                )
                 all_videos.extend(videos)
                 
-                # 获取下一页 URL
-                if get_next_page:
-                    current_url = get_next_page(current_url, page)
-                    if current_url is None:
-                        self._logger.info("已到达最后一页")
-                        break
-                else:
-                    if page < max_pages:
-                        current_url = self._build_pagination_url(base_url, page + 1)
-                    else:
-                        break
+                # 保存进度
+                if self._result_buffer:
+                    self._result_buffer.save_progress(current_url, page)
                 
-                # 分页间隔
-                self._engine._add_delay()
+                # 检查是否需要停止
+                if len(videos) == 0:
+                    self._logger.info("当前页无视频，可能已到达最后一页")
+                    break
+                
+                # 获取下一页 URL
+                if page < max_pages:
+                    try:
+                        current_url = pagination_strategy(base_url, page + 1)
+                    except Exception as e:
+                        self._logger.warning(f"生成下一页 URL 失败: {e}")
+                        break
+                    
+                    # 分页间隔
+                    self._engine._add_delay()
+                else:
+                    break
+            
+            # 刷新缓冲区
+            if self._result_buffer:
+                self._result_buffer.flush()
+                self._result_buffer.clear_progress()
             
             self._logger.info(f"分页爬取完成，共获取 {len(all_videos)} 个视频")
             return all_videos
@@ -525,20 +812,84 @@ class CrawlerAdapter(ABC):
             error_logger.error(f"分页爬取失败: {e}")
             return all_videos
     
+    def crawl_with_ajax(
+        self,
+        base_url: str,
+        api_url: str,
+        max_pages: int = 10,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        filter_languages: Optional[List[LanguageType]] = None,
+        page_param_name: str = "page",
+        use_buffer: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        AJAX 分页爬取（针对动态加载的页面）
+        
+        Args:
+            base_url: 基础页面 URL
+            api_url: AJAX API URL
+            max_pages: 最大页数
+            headers: 请求头
+            params: 额外的 API 参数
+            filter_languages: 语言白名单
+            page_param_name: 页码参数名
+            use_buffer: 是否使用结果缓冲
+        
+        Returns:
+            所有页面的视频信息列表
+        """
+        all_videos = []
+        
+        try:
+            for page in range(1, max_pages + 1):
+                self._logger.info(f"爬取第 {page}/{max_pages} 页 (AJAX): {api_url}")
+                
+                # 构建 API 请求参数
+                api_params = {page_param_name: page}
+                if params:
+                    api_params.update(params)
+                
+                # 获取 API 数据
+                html = self._engine.get(api_url, headers=headers, params=api_params)
+                
+                if html is None:
+                    self._logger.error(f"获取 AJAX 数据失败: {api_url}")
+                    break
+                
+                videos = self.parse(html, api_url)
+                self._logger.info(f"AJAX 解析完成，获取 {len(videos)} 个视频")
+                
+                if filter_languages:
+                    videos = self._filter_by_language(videos, filter_languages)
+                
+                if use_buffer and self._result_buffer:
+                    self._result_buffer.add_batch(videos)
+                
+                all_videos.extend(videos)
+                
+                if len(videos) == 0:
+                    self._logger.info("AJAX 返回空数据，可能已到达最后一页")
+                    break
+                
+                self._engine._add_delay()
+            
+            if self._result_buffer:
+                self._result_buffer.flush()
+            
+            self._logger.info(f"AJAX 分页爬取完成，共获取 {len(all_videos)} 个视频")
+            return all_videos
+        
+        except Exception as e:
+            error_logger.error(f"AJAX 分页爬取失败: {e}")
+            return all_videos
+    
     def _filter_by_language(
         self,
         videos: List[Dict[str, Any]],
         allowed_languages: List[LanguageType]
     ) -> List[Dict[str, Any]]:
-        """按语言过滤视频
-        
-        Args:
-            videos: 视频列表
-            allowed_languages: 允许的语言列表
-        
-        Returns:
-            过滤后的视频列表
-        """
+        """按语言过滤视频"""
         try:
             from utils.language_check import is_video_language_allowed
             
@@ -562,25 +913,15 @@ class CrawlerAdapter(ABC):
             self._logger.error(f"语言过滤失败: {e}")
             return videos
     
-    def _build_pagination_url(self, base_url: str, page: int) -> str:
-        """构建分页 URL（默认实现）
-        
-        Args:
-            base_url: 基础 URL
-            page: 页码
-        
-        Returns:
-            分页 URL
-        """
-        if "?" in base_url:
-            return f"{base_url}&page={page}"
-        else:
-            return f"{base_url}?page={page}"
-    
     @property
     def engine(self) -> FingerprintCrawler:
         """获取底层爬虫引擎"""
         return self._engine
+    
+    @property
+    def result_buffer(self) -> Optional[ResultBuffer]:
+        """获取结果缓冲器"""
+        return self._result_buffer
 
 
 # =====================================================
@@ -595,10 +936,15 @@ class GenericCrawler(CrawlerAdapter):
     用户可以继承此类并覆盖 parse 方法。
     """
     
-    def __init__(self, engine: Optional[FingerprintCrawler] = None) -> None:
+    def __init__(
+        self,
+        engine: Optional[FingerprintCrawler] = None,
+        buffer_size: int = 100,
+        enable_buffer: bool = True
+    ) -> None:
         """初始化通用爬虫"""
-        super().__init__(engine)
-        
+        super().__init__(engine, buffer_size, enable_buffer)
+    
     def parse(self, html: str, url: str) -> List[Dict[str, Any]]:
         """
         通用页面解析（模板方法）
@@ -623,36 +969,27 @@ class GenericCrawler(CrawlerAdapter):
 # =====================================================
 
 def create_fingerprint_crawler(config: Optional[Dict[str, Any]] = None) -> FingerprintCrawler:
-    """创建指纹爬虫引擎
-    
-    Args:
-        config: 爬虫配置
-    
-    Returns:
-        FingerprintCrawler 实例
-    """
+    """创建指纹爬虫引擎"""
     return FingerprintCrawler(config)
 
 
 def create_crawler(
     adapter_class: type = GenericCrawler,
     engine: Optional[FingerprintCrawler] = None,
+    buffer_size: int = 100,
+    enable_buffer: bool = True,
     **kwargs
 ) -> CrawlerAdapter:
-    """创建爬虫适配器
-    
-    Args:
-        adapter_class: 适配器类（默认为 GenericCrawler）
-        engine: 指纹爬虫引擎
-        **kwargs: 其他参数
-    
-    Returns:
-        CrawlerAdapter 实例
-    """
+    """创建爬虫适配器"""
     if engine is None:
         engine = FingerprintCrawler()
     
-    return adapter_class(engine, **kwargs)
+    return adapter_class(engine, buffer_size, enable_buffer, **kwargs)
+
+
+def create_result_buffer(buffer_size: int = 100) -> ResultBuffer:
+    """创建结果缓冲器"""
+    return ResultBuffer(buffer_size)
 
 
 # =====================================================
