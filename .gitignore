@@ -1,0 +1,66 @@
+# =====================================================
+# MultiLangVideoCrawler .gitignore
+# =====================================================
+
+# ---------- Python虚拟环境 ----------
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# ---------- IDE / 编辑器 ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---------- 数据库 & 数据 ----------
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# ---------- 临时文件 ----------
+tmp/
+*.tmp
+*.temp
+
+# ---------- 日志 ----------
+logs/
+*.log
+
+# ---------- 输出成品（可选，根据需要取消注释） ----------
+# output/
+# finished_sub/
+# translate_queue/
+
+# ---------- 外置二进制 ----------
+bin/ffmpeg.exe
+bin/yt-dlp.exe
+
+# ---------- 敏感配置 ----------
+api_secret.yaml.enc
+
+# ---------- 打包产物 ----------
+*.exe
+*.dist/
+*.build/
+*.onefile-build/
+Nuitka/
+*.cmd
+
+# ---------- 类型检查缓存 ----------
+.mypy_cache/
+.pytest_cache/
+
+# ---------- 系统文件 ----------
+*.bak
+*.old
