@@ -1,0 +1,725 @@
+{
+  "total_videos": 136,
+  "by_site": {
+    "mock_youtube": {
+      "german": [
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        }
+      ],
+      "french": [
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        },
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        }
+      ],
+      "spanish": [
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        },
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        }
+      ]
+    },
+    "mock_vimeo": {
+      "german": [
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        }
+      ],
+      "french": [
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        },
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        }
+      ],
+      "spanish": [
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        },
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        }
+      ]
+    },
+    "mock_dailymotion": {
+      "german": [
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        }
+      ],
+      "french": [
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        },
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        }
+      ],
+      "spanish": [
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        },
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        }
+      ]
+    },
+    "mock_bilibili": {
+      "german": [
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        },
+        {
+          "title": "Deutsch Lernen für Anfänger",
+          "source_url": "https://youtube.com/watch?v=g1",
+          "description": "Lernen Sie Deutsch einfach und schnell"
+        },
+        {
+          "title": "Kochrezepte deutsch",
+          "source_url": "https://youtube.com/watch?v=g2",
+          "description": "Leckere deutsche Gerichte"
+        },
+        {
+          "title": "Reise durch Deutschland",
+          "source_url": "https://youtube.com/watch?v=g3",
+          "description": "Schöne Städte und Landschaften"
+        },
+        {
+          "title": "German Tech Tutorial",
+          "source_url": "https://youtube.com/watch?v=g4",
+          "description": "Technologie auf Deutsch"
+        }
+      ],
+      "french": [
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        },
+        {
+          "title": "Apprendre le français",
+          "source_url": "https://youtube.com/watch?v=f1",
+          "description": "Apprendre le français facilement"
+        },
+        {
+          "title": "Recettes françaises",
+          "source_url": "https://youtube.com/watch?v=f2",
+          "description": "Délicieuses recettes françaises"
+        },
+        {
+          "title": "Voyage en France",
+          "source_url": "https://youtube.com/watch?v=f3",
+          "description": "Belles villes et paysages"
+        },
+        {
+          "title": "Tutoriel informatique français",
+          "source_url": "https://youtube.com/watch?v=f4",
+          "description": "Technologie en français"
+        }
+      ],
+      "spanish": [
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        },
+        {
+          "title": "Aprender español",
+          "source_url": "https://youtube.com/watch?v=s1",
+          "description": "Aprender español fácilmente"
+        },
+        {
+          "title": "Recetas españolas",
+          "source_url": "https://youtube.com/watch?v=s2",
+          "description": "Deliciosas recetas españolas"
+        },
+        {
+          "title": "Viaje por España",
+          "source_url": "https://youtube.com/watch?v=s3",
+          "description": "Ciudades y paisajes hermosos"
+        }
+      ]
+    }
+  },
+  "by_language": {
+    "german": 80,
+    "french": 32,
+    "spanish": 24
+  },
+  "errors": [],
+  "mode": "mock",
+  "test_time": "2026-07-20 20:49:10"
+}

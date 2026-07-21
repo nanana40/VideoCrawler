@@ -887,7 +887,8 @@ class CrawlerAdapter(ABC):
     def _filter_by_language(
         self,
         videos: List[Dict[str, Any]],
-        allowed_languages: List[LanguageType]
+        allowed_languages: List[LanguageType],
+        threshold: float = 0.3
     ) -> List[Dict[str, Any]]:
         """按语言过滤视频"""
         try:
@@ -898,7 +899,7 @@ class CrawlerAdapter(ABC):
                 title = video.get("title", "")
                 description = video.get("description", "")
                 
-                if is_video_language_allowed(title, description, allowed_languages):
+                if is_video_language_allowed(title, description, allowed_languages, threshold):
                     filtered.append(video)
                 else:
                     self._logger.debug(f"过滤非目标语言视频: {title[:30]}...")
