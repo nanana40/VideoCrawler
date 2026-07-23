@@ -37,10 +37,10 @@ tmp/
 logs/
 *.log
 
-# ---------- 输出成品（可选，根据需要取消注释） ----------
-# output/
-# finished_sub/
-# translate_queue/
+# ---------- 输出成品 ----------
+output/
+finished_sub/
+translate_queue/
 
 # ---------- 外置二进制 ----------
 bin/ffmpeg.exe

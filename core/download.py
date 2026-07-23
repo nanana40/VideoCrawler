@@ -80,7 +80,9 @@ class VideoDownloader:
         category: Optional[VideoCategory] = None,
         output_path: Optional[str] = None,
         progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
+        min_duration: float = 90.0,
+        max_duration: float = 600.0
     ) -> DownloadResult:
         """
         下载单个视频
@@ -94,6 +96,8 @@ class VideoDownloader:
             output_path: 输出路径（可选，如果提供则覆盖语言/分类目录）
             progress_callback: 进度回调函数
             max_retries: 最大重试次数
+            min_duration: 最小视频时长（秒），默认90秒（1分30秒）
+            max_duration: 最大视频时长（秒），默认300秒（5分钟）
             
         Returns:
             DownloadResult 下载结果
@@ -117,7 +121,7 @@ class VideoDownloader:
         try:
             for attempt in range(max_retries):
                 try:
-                    return self._do_download(url, video_id, title, output_path, progress_callback)
+                    return self._do_download(url, video_id, title, output_path, progress_callback, min_duration, max_duration)
                 except Exception as e:
                     logger.warning(f"下载失败 (尝试 {attempt + 1}/{max_retries}): {video_id}, error={e}")
                     if attempt < max_retries - 1:
@@ -140,7 +144,9 @@ class VideoDownloader:
         video_id: str,
         title: str = "",
         output_path: Optional[str] = None,
-        progress_callback: Optional[Callable[[DownloadProgress], None]] = None
+        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+        min_duration: float = 90.0,
+        max_duration: float = 600.0
     ) -> DownloadResult:
         """执行实际下载操作"""
         import yt_dlp
@@ -187,12 +193,33 @@ class VideoDownloader:
         ydl_opts["progress_hooks"] = [progress_hook]
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            
+            duration = info.get("duration", 0)
+            if duration < min_duration:
+                logger.warning(f"视频时长 {duration:.2f} 秒小于最小要求 {min_duration:.2f} 秒，跳过下载")
+                return DownloadResult(
+                    video_id=video_id,
+                    url=url,
+                    success=False,
+                    error_message=f"视频时长不足，仅 {duration:.2f} 秒，要求至少 {min_duration:.2f} 秒"
+                )
+            
+            if duration > max_duration:
+                logger.warning(f"视频时长 {duration:.2f} 秒大于最大要求 {max_duration:.2f} 秒，跳过下载")
+                return DownloadResult(
+                    video_id=video_id,
+                    url=url,
+                    success=False,
+                    error_message=f"视频时长过长，达 {duration:.2f} 秒，要求不超过 {max_duration:.2f} 秒"
+                )
+            
             info = ydl.extract_info(url, download=True)
             
             file_path = ydl.prepare_filename(info)
             duration = info.get("duration")
             
-            logger.info(f"视频下载完成: {file_path}")
+            logger.info(f"视频下载完成: {file_path}，时长: {duration:.2f}秒")
             
             return DownloadResult(
                 video_id=video_id,
@@ -361,7 +388,14 @@ class DownloadPool:
             self._cleanup_finished()
             time.sleep(0.5)
         
-        return self._results
+        results = self._results[:]
+        self._results.clear()
+        return results
+    
+    def clear(self) -> None:
+        """清空下载池状态（线程和结果）"""
+        self._threads.clear()
+        self._results.clear()
     
     def is_busy(self) -> bool:
         """检查是否有正在进行的下载任务"""
@@ -397,7 +431,9 @@ def download_video(
     language: Optional[LanguageType] = None,
     category: Optional[VideoCategory] = None,
     output_path: Optional[str] = None,
-    progress_callback: Optional[Callable[[DownloadProgress], None]] = None
+    progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+    min_duration: float = 90.0,
+    max_duration: float = 300.0
 ) -> DownloadResult:
     """
     便捷函数：下载单个视频
@@ -410,12 +446,14 @@ def download_video(
         category: 视频分类（用于自动选择存储目录）
         output_path: 输出路径
         progress_callback: 进度回调
+        min_duration: 最小视频时长（秒），默认90秒（1分30秒）
+        max_duration: 最大视频时长（秒），默认300秒（5分钟）
         
     Returns:
         DownloadResult 下载结果
     """
     downloader = VideoDownloader()
-    return downloader.download_video(url, video_id, title, language, category, output_path, progress_callback)
+    return downloader.download_video(url, video_id, title, language, category, output_path, progress_callback, min_duration=min_duration, max_duration=max_duration)
 
 
 def init_download_pool(max_threads: Optional[int] = None) -> None:

@@ -5,25 +5,25 @@
 
 ### 一、核心词汇
 - **really** (3次)
-  *例句: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *例句: The cool thing about these guys is that they have really, really, really long hunts.*
 - **cool** (2次)
-  *例句: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *例句: The cool thing about these guys is that they have really, really, really long hunts.*
 - **alright** (1次)
-  *例句: 好吧，我们是大象之一。*
+  *例句: Alright so here we are one of the elephants.*
 - **one** (1次)
-  *例句: 好吧，我们是大象之一。*
+  *例句: Alright so here we are one of the elephants.*
 - **elephants** (1次)
 - **thing** (1次)
-  *例句: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *例句: The cool thing about these guys is that they have really, really, really long hunts.*
 - **guys** (1次)
-  *例句: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *例句: The cool thing about these guys is that they have really, really, really long hunts.*
 - **long** (1次)
-  *例句: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *例句: The cool thing about these guys is that they have really, really, really long hunts.*
 - **hunts** (1次)
 - **pretty** (1次)
-  *例句: 这几乎就是所有要说的了。*
+  *例句: And that's pretty much all there is to say.*
 - **much** (1次)
-  *例句: 这几乎就是所有要说的了。*
+  *例句: And that's pretty much all there is to say.*
 - **say** (1次)
 
 ### 二、实用短语
@@ -31,13 +31,9 @@
 
 ### 三、典型句式
 1. Alright so here we are one of the elephants.
-   → 好吧，我们是大象之一。
 2. The cool thing about these guys is that they have really, really, really long hunts.
-   → 这些家伙最酷的一点是，他们的狩猎时间非常非常长。
 3. And that's cool.
-   → 这很酷。
 4. And that's pretty much all there is to say.
-   → 这几乎就是所有要说的了。
 
 ### 四、语言难度评估
 - 平均句长: 9.0 词

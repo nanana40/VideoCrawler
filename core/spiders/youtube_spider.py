@@ -21,6 +21,7 @@ class YoutubeSpider(VideoSpider):
         - 获取单个视频详情
         - 获取频道视频列表
         - 语言过滤
+        - 时长过滤
     """
     
     def __init__(self, **kwargs) -> None:
@@ -28,11 +29,61 @@ class YoutubeSpider(VideoSpider):
         super().__init__(**kwargs)
         self._logger.info("YouTube 爬虫初始化完成")
     
+    def _parse_duration(self, duration_str: Any) -> Optional[int]:
+        """解析时长字符串或数字为秒数
+        
+        支持格式：
+            - 整数秒数：123
+            - 冒号格式："12:34", "1:23:45"
+            - ISO 8601 格式："PT12M34S", "PT1H23M45S"
+        
+        Args:
+            duration_str: 时长字符串或整数秒数
+            
+        Returns:
+            秒数，解析失败返回 None
+        """
+        if duration_str is None:
+            return None
+            
+        # 整数类型
+        if isinstance(duration_str, (int, float)):
+            return int(duration_str)
+            
+        if isinstance(duration_str, str):
+            duration_str = duration_str.strip()
+            if not duration_str:
+                return None
+            
+            # ISO 8601 格式：PT1H23M45S
+            iso_match = re.match(r'^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$', duration_str, re.IGNORECASE)
+            if iso_match:
+                hours = int(iso_match.group(1) or 0)
+                minutes = int(iso_match.group(2) or 0)
+                seconds = int(iso_match.group(3) or 0)
+                return hours * 3600 + minutes * 60 + seconds
+            
+            # 冒号格式："12:34" 或 "1:23:45"
+            parts = duration_str.split(":")
+            try:
+                if len(parts) == 2:
+                    return int(parts[0]) * 60 + int(parts[1])
+                elif len(parts) == 3:
+                    return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                elif len(parts) == 1 and parts[0].isdigit():
+                    return int(parts[0])
+            except ValueError:
+                return None
+        
+        return None
+    
     def search(
         self,
         query: str,
         max_pages: int = 5,
         filter_languages: Optional[List[LanguageType]] = None,
+        min_duration: int = 90,
+        max_duration: int = 300,
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
@@ -42,6 +93,8 @@ class YoutubeSpider(VideoSpider):
             query: 搜索关键词
             max_pages: 最大页数
             filter_languages: 语言白名单
+            min_duration: 最小时长（秒），默认90秒（1分30秒）
+            max_duration: 最大时长（秒），默认300秒（5分钟）
             **kwargs: 其他搜索参数
         
         Returns:
@@ -52,7 +105,6 @@ class YoutubeSpider(VideoSpider):
         def pagination_strategy(base_url: str, page: int) -> str:
             if page == 1:
                 return base_url
-            # YouTube 使用 pageToken 进行分页，这里简化为 URL 参数
             return f"{base_url}&page={page}"
         
         base_url = self._build_search_url(query)
@@ -64,7 +116,44 @@ class YoutubeSpider(VideoSpider):
             filter_languages=filter_languages
         )
         
-        self._logger.info(f"YouTube 搜索完成，获取 {len(videos)} 个视频")
+        filtered_count = 0
+        no_duration_count = 0
+        if min_duration > 0 or max_duration < float('inf'):
+            filtered_videos = []
+            for video in videos:
+                duration = self._parse_duration(video.get("duration"))
+                if duration is None:
+                    # 无法解析时长，不保留（避免下载阶段才发现时长不符）
+                    no_duration_count += 1
+                    filtered_count += 1
+                    self._logger.debug(
+                        f"过滤无时长视频: {video.get('title', 'N/A')[:30]} "
+                        f"(duration字段={video.get('duration')!r})"
+                    )
+                elif min_duration <= duration <= max_duration:
+                    filtered_videos.append(video)
+                else:
+                    filtered_count += 1
+                    self._logger.debug(
+                        f"过滤时长不符视频: {video.get('title', 'N/A')[:30]} "
+                        f"(时长={duration}秒，要求{min_duration}-{max_duration}秒)"
+                    )
+            
+            # 回退逻辑：如果过滤后0个视频，说明爬虫无法解析时长，保留所有视频让下载器判断
+            if not filtered_videos and videos:
+                self._logger.warning(
+                    f"时长过滤后0个视频（共{no_duration_count}个无时长），"
+                    f"回退为不过滤，保留全部 {len(videos)} 个视频"
+                )
+                filtered_count = 0
+                no_duration_count = 0
+            else:
+                videos = filtered_videos
+        
+        self._logger.info(
+            f"YouTube 搜索完成，获取 {len(videos)} 个视频"
+            f"（过滤时长 {filtered_count} 个，其中无时长 {no_duration_count} 个）"
+        )
         return videos
     
     def get_video_info(self, video_url: str) -> Optional[Dict[str, Any]]:

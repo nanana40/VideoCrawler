@@ -340,6 +340,29 @@ class SubtitleTranslator:
                 "de": "DE",
                 "fr": "FR",
                 "es": "ES",
+                "ja": "JA",
+                "ko": "KO",
+                "ru": "RU",
+                "it": "IT",
+                "pt": "PT",
+                "ar": "AR",
+                "hi": "HI",
+                "nl": "NL",
+                "sv": "SV",
+                "no": "NO",
+                "da": "DA",
+                "fi": "FI",
+                "pl": "PL",
+                "cs": "CS",
+                "hu": "HU",
+                "ro": "RO",
+                "el": "EL",
+                "tr": "TR",
+                "vi": "VI",
+                "th": "TH",
+                "id": "ID",
+                "ms": "MS",
+                "tl": "TL",
                 "auto": "EN"
             }
             
@@ -662,7 +685,11 @@ class VideoSubtitleEmbedder:
             ffmpeg_path = ffmpeg_path.parent / "ffmpeg" / "bin" / "ffmpeg.exe"
         
         self._ffmpeg_path = str(ffmpeg_path)
-        logger.info(f"视频字幕嵌入器初始化完成，ffmpeg路径: {self._ffmpeg_path}")
+        
+        if os.path.exists(self._ffmpeg_path):
+            logger.info(f"视频字幕嵌入器初始化完成，ffmpeg路径: {self._ffmpeg_path}")
+        else:
+            logger.warning(f"ffmpeg 未找到，将跳过字幕嵌入，仅生成字幕文件")
     
     def _has_embedded_subtitle(self, video_path: str) -> bool:
         """
@@ -855,8 +882,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             has_original_subtitle: 是否有原字幕
             
         Returns:
-            输出视频路径
+            输出视频路径（如果ffmpeg不可用，返回原视频路径）
         """
+        if not os.path.exists(self._ffmpeg_path):
+            logger.warning("ffmpeg 不可用，跳过字幕嵌入")
+            return video_path
+        
         if output_path is None:
             dir_name = os.path.dirname(video_path)
             base_name = os.path.basename(video_path)
@@ -877,7 +908,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             style = f"FontName=Microsoft YaHei,FontSize={font_size},PrimaryColour=&H00FFFFFF,SecondaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H80000000,Bold=1,Alignment=2,MarginV={margin_v},Outline=2,Shadow=1"
             
             cmd = [
-                self._ffmpeg_path or "ffmpeg",
+                self._ffmpeg_path,
                 "-i", video_path,
                 "-vf", f"subtitles='{escaped_path}':force_style='{style}'",
                 "-c:a", "copy",
@@ -901,7 +932,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
         except Exception as e:
             logger.error(f"ffmpeg 命令执行失败: {e}")
-            raise
+            return video_path
 
 
 class SubtitleProcessor:

@@ -335,10 +335,18 @@ def yield_to_db(items: List[Tuple[str, tuple]]) -> None:
     
     conn = _get_connection()
     try:
+        db_path = str(get_db_path())
+        logger.info(f"开始批量写入数据库，路径={db_path}，待写入 {len(items)} 条")
         with conn:
             for sql, params in items:
                 conn.execute(sql, params)
-        logger.debug(f"批量写入完成，共 {len(items)} 条记录")
+        
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM video_info")
+        total = cursor.fetchone()[0]
+        cursor.close()
+        
+        logger.info(f"批量写入完成，实际写入数据库记录数={total}")
     except Exception as e:
         logger.error(f"批量写入失败: {e}")
         raise
@@ -508,8 +516,16 @@ def get_undownloaded_videos() -> List[Dict[str, Any]]:
         视频信息字典列表
     """
     try:
-        cursor = _execute_with_retry(SQLStatements.GET_UNDOWNLOADED_VIDEOS)
-        return _cursor_to_list(cursor)
+        conn = _get_connection()
+        cursor = conn.cursor()
+        cursor.execute(SQLStatements.GET_UNDOWNLOADED_VIDEOS)
+        
+        columns = [desc[0] for desc in cursor.getdescription()]
+        result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        cursor.close()
+        logger.info(f"查询未下载视频成功，共 {len(result)} 条")
+        return result
     except Exception as e:
         logger.error(f"查询未下载视频失败: {e}")
         return []

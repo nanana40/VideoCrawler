@@ -6,22 +6,22 @@
 ### 一、口语标记词
 - **cool** (2次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 - **alright** (1次)
   *例句: Alright so here we are one of the elephants.*
-  *翻译: 好吧，我们是大象之一。*
+  *翻译: Alright so here we are one of the elephants.*
 - **so** (1次)
   *例句: Alright so here we are one of the elephants.*
-  *翻译: 好吧，我们是大象之一。*
+  *翻译: Alright so here we are one of the elephants.*
 - **pretty much** (1次)
   *例句: And that's pretty much all there is to say.*
-  *翻译: 这几乎就是所有要说的了。*
+  *翻译: And that's pretty much all there is to say.*
 - **guy** (1次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 - **guys** (1次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 
 ### 二、缩略语与非正式表达
 - 未检测到明显的缩略语
@@ -33,20 +33,20 @@
 ### 四、非正式词汇
 - **cool** (1次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 
 - **guys** (1次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 
 - **thing** (1次)
   *例句: The cool thing about these guys is that they have really, really, really long hunts.*
-  *翻译: 这些家伙最酷的一点是，他们的狩猎时间非常非常长。*
+  *翻译: The cool thing about these guys is that they have really, really, really long hunts.*
 
 - **pretty** (1次)
   *例句: And that's pretty much all there is to say.*
-  *翻译: 这几乎就是所有要说的了。*
+  *翻译: And that's pretty much all there is to say.*
 
 - **much** (1次)
   *例句: And that's pretty much all there is to say.*
-  *翻译: 这几乎就是所有要说的了。*
+  *翻译: And that's pretty much all there is to say.*

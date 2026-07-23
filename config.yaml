@@ -47,3 +47,14 @@ log:
 classify:
   api_url: ""                    # 在线分类API地址
   cache_ttl: 86400               # 分类结果缓存时长（秒）
+
+# AI文案生成配置
+ai_writer:
+  enabled: false                 # 是否启用AI文案生成
+  api_url: ""                    # AI API地址（如：http://localhost:8000/v1/chat/completions）
+  api_key: ""                    # API密钥（可选）
+  max_retries: 8                 # 最大重构尝试次数
+  timeout: 60                    # 请求超时时间（秒）
+  model: "gpt-4o"               # 使用的模型名称
+  temperature: 0.7              # 温度参数（0-1，越高越随机）
+  max_tokens: 4000              # 最大输出token数

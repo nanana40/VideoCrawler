@@ -124,13 +124,61 @@ def get_schema_path() -> Path:
 # =====================================================
 
 def get_ffmpeg_path() -> Path:
-    """获取 ffmpeg 可执行文件路径"""
-    return get_bin_dir() / "ffmpeg.exe"
+    """获取 ffmpeg 可执行文件路径
+    
+    查找顺序：
+        1. bin/ffmpeg.exe
+        2. bin/ffmpeg/bin/ffmpeg.exe
+        3. bin/ffmpeg-*/bin/ffmpeg.exe
+    """
+    bin_dir = get_bin_dir()
+    
+    # 1. 直接在 bin 目录下
+    direct_path = bin_dir / "ffmpeg.exe"
+    if direct_path.exists():
+        return direct_path
+    
+    # 2. bin/ffmpeg/bin/ffmpeg.exe
+    nested_path = bin_dir / "ffmpeg" / "bin" / "ffmpeg.exe"
+    if nested_path.exists():
+        return nested_path
+    
+    # 3. bin/ffmpeg-*/bin/ffmpeg.exe（通配符匹配）
+    if bin_dir.exists():
+        for item in bin_dir.iterdir():
+            if item.is_dir() and item.name.startswith("ffmpeg"):
+                candidate = item / "bin" / "ffmpeg.exe"
+                if candidate.exists():
+                    return candidate
+    
+    # 默认返回直接路径（兼容旧逻辑）
+    return direct_path
 
 
 def get_ytdlp_path() -> Path:
-    """获取 yt-dlp 可执行文件路径"""
-    return get_bin_dir() / "yt-dlp.exe"
+    """获取 yt-dlp 可执行文件路径
+    
+    查找顺序：
+        1. bin/yt-dlp.exe
+        2. 系统 PATH 中的 yt-dlp
+    """
+    bin_dir = get_bin_dir()
+    direct_path = bin_dir / "yt-dlp.exe"
+    if direct_path.exists():
+        return direct_path
+    return direct_path
+
+
+def ensure_tools_in_path() -> None:
+    """将 ffmpeg 和 yt-dlp 所在目录添加到系统 PATH
+    
+    确保 Whisper、yt-dlp 等工具能找到 ffmpeg。
+    """
+    ffmpeg_path = get_ffmpeg_path()
+    if ffmpeg_path.exists():
+        ffmpeg_dir = str(ffmpeg_path.parent)
+        if ffmpeg_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
 
 # =====================================================

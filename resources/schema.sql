@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS video_info (
     update_ts           INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),  -- 记录更新时间戳（Unix秒级）
 
     -- CHECK约束拦截脏数据入库
-    CHECK (lang IN ('de', 'fr', 'es')),
+    CHECK (lang IN ('de', 'fr', 'es', 'en', 'zh', 'ja', 'ko', 'ru', 'it', 'pt', 'ar', 'hi', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'cs', 'hu', 'ro', 'el', 'tr', 'vi', 'th', 'id', 'ms', 'tl')),
     CHECK (is_downloaded IN (0, 1))
 );
 

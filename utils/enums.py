@@ -249,6 +249,7 @@ class VideoCategory(BaseEnumMixin, StrEnum):
     DAILY = "daily"
     ENTERTAINMENT = "entertainment"
     NEWS = "news"
+    EDUCATION = "education"
 
 
 _DISPLAY_NAMES[VideoCategory] = {
@@ -256,6 +257,7 @@ _DISPLAY_NAMES[VideoCategory] = {
     VideoCategory.DAILY: "日常",
     VideoCategory.ENTERTAINMENT: "娱乐",
     VideoCategory.NEWS: "新闻",
+    VideoCategory.EDUCATION: "教育",
 }
 
 
