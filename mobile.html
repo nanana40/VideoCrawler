@@ -384,7 +384,22 @@ if (typeof mqtt === 'undefined') {
 <!-- ============ 发布 Tab (GUI ⑤ 对应) ============ -->
 <div class="tab-content" id="tab-queue">
   <section>
-    <div class="section-title">队列状态</div>
+    <div class="section-title">① 成品视频 → 入队发布</div>
+    <div class="row" style="gap:8px">
+      <select id="pubAccount" style="flex:1"><option value="">加载账号中...</option></select>
+      <button class="btn small" onclick="loadAccounts()" style="width:auto;margin:0;padding:9px 10px">🔄</button>
+    </div>
+    <div class="card" id="poolCard" style="margin-top:8px">
+      <div class="empty">点击下方按钮加载候选池</div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="loadPool(false)">🔄 近72h成品</button>
+      <button class="btn small" onclick="loadPool(true)">全部</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">② 队列状态</div>
     <div class="card" id="queueCard">
       <div class="empty">点击刷新获取队列状态</div>
     </div>
@@ -393,7 +408,7 @@ if (typeof mqtt === 'undefined') {
   </section>
 
   <section>
-    <div class="section-title">发布记录</div>
+    <div class="section-title">③ 发布记录</div>
     <div class="card" id="recordsCard">
       <div class="empty">点击下方按钮加载</div>
     </div>
@@ -546,22 +561,21 @@ if (!deviceId || !token) {
   function queueSnapshot() {
     sendCmd('queue_snapshot').then(data => {
       const card = document.getElementById('queueCard');
-      const cur = data.current_job;
+      const cur = data.current || null;
       const pending = (data.pending || []).slice(0, 10);
       let html = '';
-      if (cur) {
-        html += `<div class="muted" style="margin-bottom:6px">正在上传</div>`;
-        html += `<div class="pool-item"><div><div class="pool-title">${esc(cur.title || '#' + cur.job_id)}</div><div class="pool-meta">pool ${cur.pool_id} · account ${cur.account_id}</div></div><span class="pool-status uploading">上传中</span></div>`;
+      if (cur && cur.job_id) {
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(cur.title || '#' + cur.job_id)}</div><div class="pool-meta">pool ${cur.pool_id} · account ${cur.account_id} · ${cur.elapsed_sec || 0}s</div></div><span class="pool-status uploading">上传中</span></div>`;
       }
       if (pending.length) {
         html += `<div class="muted" style="margin:10px 0 6px">待发布 (${pending.length})</div>`;
         pending.forEach(j => {
-          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id}</div></div>`
+          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id} · ${esc(j.created_at || '')}</div></div>`
             + `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 8px" onclick="queueCancel('${esc(j.job_id)}')">✖</button>`
             + `<span class="pool-status pending">等待</span></div>`;
         });
       }
-      if (!cur && !pending.length) {
+      if ((!cur || !cur.job_id) && !pending.length) {
         html = '<div class="empty">队列为空 ✨</div>';
       }
       card.innerHTML = html;
@@ -596,6 +610,55 @@ if (!deviceId || !token) {
       });
       card.innerHTML = html;
     }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 发布 Tab: 成品候选池 ============
+  function loadAccounts() {
+    sendCmd('accounts').then(data => {
+      const sel = document.getElementById('pubAccount');
+      const accs = (data.accounts || []).filter(a => a.is_active !== 0 && a.is_active !== false);
+      if (!accs.length) {
+        sel.innerHTML = '<option value="">⚠️ 无可用账号 (先在 GUI 配置)</option>';
+        return;
+      }
+      sel.innerHTML = accs.map(a =>
+        `<option value="${a.id}">${esc((a.nickname || a.uid || ('账号' + a.id)) + ' · ' + esc(a.platform || ''))}</option>`
+      ).join('');
+    }).catch(e => toast('❌ 账号加载失败: ' + e.message));
+  }
+
+  function loadPool(all) {
+    const card = document.getElementById('poolCard');
+    card.innerHTML = '<div class="empty">加载中...</div>';
+    const p = all ? { scope: 'all', limit: 50 } : { scope: 'recent', hours: 72, limit: 30 };
+    sendCmd('pool_list', p).then(data => {
+      const items = data.items || [];
+      if (!items.length) {
+        card.innerHTML = '<div class="empty">候选池为空<br><span class="muted">流水线完成烧录后会自动入池</span></div>';
+        return;
+      }
+      let html = '';
+      items.forEach(v => {
+        const st = v.publish_status === 1 ? '<span class="pool-status done">已发布</span>'
+                 : (v.publish_status === 3 ? '<span class="pool-status fail">失败</span>' : '');
+        const meta = [v.channel, v.created, v.duration_sec ? v.duration_sec + 's' : ''].filter(Boolean).join(' · ');
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(v.title || ('#' + v.pool_id))}</div>`
+          + `<div class="pool-meta">${esc(meta)}</div></div>`
+          + (v.publish_status === 1 || v.publish_status === 3
+              ? st
+              : `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 8px" onclick="enqueueJob(${v.pool_id})">📤 入队</button>`)
+          + `</div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => { card.innerHTML = '<div class="empty">加载失败</div>'; toast('❌ ' + e.message); });
+  }
+
+  function enqueueJob(poolId) {
+    const accId = parseInt(document.getElementById('pubAccount').value);
+    if (!accId) return alert('请先选择发布账号 (无账号时先在 GUI「发布」页添加)');
+    sendCmd('queue_enqueue', { items: [{ pool_id: poolId, account_id: accId }] })
+      .then(d => { toast(`📥 已入队 ${d.enqueued} 条`); queueSnapshot(); })
+      .catch(e => toast('❌ ' + e.message));
   }
 
   // ============ 识别 Tab ============
@@ -788,7 +851,7 @@ if (!deviceId || !token) {
     document.getElementById('tab-' + name).classList.add('active');
     // 切到状态/队列/日志/识别/字幕时自动刷新
     if (name === 'status') refreshStatus();
-    if (name === 'queue') queueSnapshot();
+    if (name === 'queue') { queueSnapshot(); loadPool(false); loadAccounts(); }
     if (name === 'log') refreshLogs();
     if (name === 'recognize') loadVideos();
     if (name === 'subtitle') loadStyle();
