@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VideoCrawler">
+<title>VideoCrawler · 远程控制面板</title>
+<script>
+// PWA manifest (内嵌 data URI, 免额外文件) — 支持「添加到主屏幕」后以独立窗口运行
+(function () {
+  var icon = "data:image/svg+xml," + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>" +
+    "<rect width='64' height='64' rx='14' fill='#0f1420'/>" +
+    "<text x='32' y='42' font-size='26' font-family='sans-serif' font-weight='bold' " +
+    "text-anchor='middle' fill='#4e8cff'>VC</text></svg>"
+  );
+  var manifest = {
+    name: "VideoCrawler 远程控制",
+    short_name: "VC远程",
+    display: "standalone",
+    background_color: "#0f1420",
+    theme_color: "#0f1420",
+    start_url: ".",
+    icons: [{ src: icon, sizes: "any", type: "image/svg+xml", purpose: "any" }]
+  };
+  var link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = "data:application/manifest+json;charset=utf-8," +
+    encodeURIComponent(JSON.stringify(manifest));
+  document.head.appendChild(link);
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+// CDN 双保险: 主源 jsdelivr (国内可达性好), 失败时回退 unpkg
+if (typeof mqtt === 'undefined') {
+  document.write('<scr' + 'ipt src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"><\/scr' + 'ipt>');
+}
+</script>
+<style>
+  :root {
+    --bg-deep: #0f1420;
+    --bg-card: #1a2130;
+    --bg-input: #232b3d;
+    --bg-hover: #2a3448;
+    --text-primary: #d4d9e5;
+    --text-secondary: #8892a6;
+    --text-muted: #5e6677;
+    --accent: #4e8cff;
+    --accent-dim: rgba(78, 140, 255, 0.15);
+    --ok: #5da87a;
+    --warn: #b08848;
+    --err: #c97878;
+    --border: #2d3648;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    max-width: 680px; margin: 0 auto;
+    padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* 状态栏 */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px 12px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .status-pill {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    background: var(--bg-card); color: var(--text-muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+  .status-pill.ok .dot { background: var(--ok); }
+  .status-pill.err .dot { background: var(--err); }
+  .status-pill.run .dot { background: var(--accent); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+
+  /* 区块 */
+  section { margin-bottom: 14px; }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--text-muted); margin-bottom: 8px; padding-left: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .section-title::before { content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+
+  /* 卡片 */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+  }
+  .card + .card { margin-top: 10px; }
+
+  /* 按钮 */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 13px 14px; margin-bottom: 8px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text-primary);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all .12s;
+  }
+  .btn:active { transform: scale(.975); background: var(--bg-hover); }
+  .btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  .btn.success { background: rgba(93,168,122,.12); border-color: rgba(93,168,122,.3); color: var(--ok); }
+  .btn.warn { background: rgba(176,136,72,.12); border-color: rgba(176,136,72,.3); color: var(--warn); }
+  .btn.danger { background: rgba(201,120,120,.12); border-color: rgba(201,120,120,.3); color: var(--err); }
+  .btn.small { padding: 9px 10px; font-size: 13px; margin-bottom: 0; }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* 输入 */
+  input, select, textarea {
+    width: 100%; padding: 12px 14px; margin-bottom: 8px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-primary); font-size: 14px;
+    outline: none; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  /* 任务状态 */
+  .task-card { padding: 16px; }
+  .task-badge {
+    display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .task-badge.idle { background: var(--bg-input); color: var(--text-muted); }
+  .task-badge.running { background: var(--accent-dim); color: var(--accent); }
+  .task-badge.done { background: rgba(93,168,122,.15); color: var(--ok); }
+  .task-badge.error { background: rgba(201,120,120,.15); color: var(--err); }
+  .task-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .task-meta { font-size: 12px; color: var(--text-muted); }
+  .task-progress { margin-top: 10px; height: 3px; background: var(--bg-input); border-radius: 2px; overflow: hidden; }
+  .task-progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+
+  /* 日志 */
+  .log-box {
+    background: #0a0e18; border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 12px; color: var(--text-secondary);
+    max-height: 260px; overflow-y: auto;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+  .log-line { margin: 1px 0; }
+  .log-line .ok { color: var(--ok); }
+  .log-line .err { color: var(--err); }
+  .log-line .warn { color: var(--warn); }
+  .log-line .accent { color: var(--accent); }
+
+  /* 视频池 */
+  .pool-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .pool-item:last-child { border-bottom: none; }
+  .pool-title { font-size: 13px; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pool-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pool-status { font-size: 10px; padding: 2px 6px; border-radius: 6px; margin-left: 8px; }
+  .pool-status.pending { background: var(--bg-input); color: var(--text-muted); }
+  .pool-status.uploading { background: var(--accent-dim); color: var(--accent); }
+  .pool-status.done { background: rgba(93,168,122,.15); color: var(--ok); }
+  .pool-status.fail { background: rgba(201,120,120,.15); color: var(--err); }
+
+  /* 分隔 */
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* 小工具 */
+  .muted { color: var(--text-muted); font-size: 11px; }
+  .hidden { display: none !important; }
+  .empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+
+  /* Tab */
+  .tab-bar {
+    display: flex; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; margin-bottom: 10px;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 9px 8px;
+    border-radius: 7px; font-size: 13px; color: var(--text-muted);
+    cursor: pointer; transition: all .15s; font-weight: 500;
+  }
+  .tab.active { background: var(--bg-input); color: var(--text-primary); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 VideoCrawler</h1>
+  <span class="status-pill" id="mqttPill">
+    <span class="dot"></span><span id="mqttText">连接中</span>
+  </span>
+</header>
+
+<!-- ============ Tab 切换 ============ -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('status')">状态</div>
+  <div class="tab" onclick="switchTab('pipeline')">流水线</div>
+  <div class="tab" onclick="switchTab('queue')">发布队列</div>
+  <div class="tab" onclick="switchTab('log')">日志</div>
+</div>
+
+<!-- ============ 状态 Tab ============ -->
+<div class="tab-content active" id="tab-status">
+  <section>
+    <div class="section-title">设备</div>
+    <div class="card task-card">
+      <div class="muted" style="margin-bottom:10px">设备 ID: <code id="deviceId" style="color:var(--accent);font-size:12px"></code></div>
+      <div class="muted">Broker: broker.emqx.io (公共免费)</div>
+      <div class="muted">协议: WebSocket :8084</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">当前任务</div>
+    <div class="card task-card">
+      <span class="task-badge idle" id="taskBadge">空闲</span>
+      <div class="task-title" id="taskTitle">等待指令</div>
+      <div class="task-meta" id="taskMeta">—</div>
+      <div class="task-progress" id="taskProgress"><div class="task-progress-bar" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">快速操作</div>
+    <button class="btn warn" onclick="sendCmd('stop')">⏹ 停止当前任务</button>
+    <button class="btn" onclick="refreshStatus()">🔄 刷新状态</button>
+  </section>
+</div>
+
+<!-- ============ 流水线 Tab ============ -->
+<div class="tab-content" id="tab-pipeline">
+  <section>
+    <div class="section-title">单视频全自动</div>
+    <div class="card">
+      <input id="pipeUrl" type="text" placeholder="YouTube URL 或 11 位 video_id" autocomplete="off">
+      <div class="row">
+        <input id="pipeLang" type="text" value="en" placeholder="源语言 en/de/ja">
+        <input id="pipeTarget" type="text" value="zh-CN" placeholder="目标语言">
+      </div>
+      <button class="btn primary" onclick="pipelineSingle()">▶️ 开始全自动</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">搜索 & 批量</div>
+    <div class="card">
+      <select id="searchMode" style="margin-bottom:8px">
+        <option value="language">按语言</option>
+        <option value="keyword">按关键词</option>
+        <option value="channel">按频道</option>
+      </select>
+      <input id="searchLang" type="text" value="en" placeholder="语言代码">
+      <input id="searchKeyword" type="text" placeholder="关键词（keyword 模式）">
+      <input id="searchChannel" type="text" placeholder="频道 handle（channel 模式）">
+      <div class="row">
+        <input id="searchCount" type="number" value="5" min="1" max="50" placeholder="数量">
+        <input id="searchMinDur" type="number" value="90" placeholder="最短秒">
+        <input id="searchMaxDur" type="number" value="600" placeholder="最长秒">
+      </div>
+      <button class="btn primary" onclick="pipelineSearch()">🔍 开始搜索流水线</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 发布队列 Tab ============ -->
+<div class="tab-content" id="tab-queue">
+  <section>
+    <div class="section-title">队列状态</div>
+    <div class="card" id="queueCard">
+      <div class="empty">点击刷新获取队列状态</div>
+    </div>
+    <button class="btn" onclick="queueSnapshot()" style="margin-top:8px">🔄 刷新队列</button>
+    <button class="btn danger" onclick="queueClear()" style="margin-top:4px">🗑 清空待发布</button>
+  </section>
+
+  <section>
+    <div class="section-title">发布记录</div>
+    <div class="card" id="recordsCard">
+      <div class="empty">发布完成后在此显示</div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 日志 Tab ============ -->
+<div class="tab-content" id="tab-log">
+  <section>
+    <div class="section-title">实时日志</div>
+    <div class="log-box" id="logBox"><div class="log-line muted">等待日志推送...</div></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn small" onclick="clearLog()">清空</button>
+      <button class="btn small" onclick="refreshLogs()">拉取历史</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// ============================================================
+// URL 参数 & localStorage 配对 & MQTT 连接
+// ============================================================
+const params = new URLSearchParams(location.search);
+const LS_PAIRING = 'vc_remote_pairing';
+// 设备配对: URL 参数优先并写入 localStorage; 缺参时回退 (添加到主屏幕后 query 可能丢失)
+let deviceId = params.get('device');
+let token = params.get('token');
+if (deviceId && token) {
+  try { localStorage.setItem(LS_PAIRING, JSON.stringify({ deviceId: deviceId, token: token })); } catch (e) {}
+} else {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_PAIRING) || 'null');
+    if (saved && saved.deviceId && saved.token) { deviceId = saved.deviceId; token = saved.token; }
+  } catch (e) {}
+}
+
+if (!deviceId || !token) {
+  document.body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--err)"><h2>⚠️ 缺少设备参数</h2><p class="muted">请从 VideoCrawler 的二维码重新扫码打开<br>(旧快捷方式失效时, 重新扫一次二维码即可)</p></div>';
+} else {
+  document.getElementById('deviceId').textContent = deviceId;
+  const topicCmd  = `user/${deviceId}/cmd`;
+  const topicResp = `user/${deviceId}/resp`;
+  const topicLog  = `user/${deviceId}/log`;
+
+  // MQTT over WebSocket (EMQX 公共 broker)
+  // 注意: 局部变量必须叫 client, 不能叫 mqtt —— 否则会遮蔽 CDN 的全局 mqtt 并触发 TDZ ReferenceError
+  const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+  const clientId  = 'vc_web_' + Math.random().toString(16).slice(2, 10);
+  let respHandlers = {};  // request_id → resolve/reject
+  let client = null;      // MQTT 客户端句柄 (供下方指令函数闭包引用)
+
+  if (typeof mqtt === 'undefined') {
+    // 两个 CDN 都没加载成功 (极端网络环境): 保 UI 可用, 状态明确提示
+    document.getElementById('mqttText').textContent = '⚠️ MQTT 库加载失败';
+  } else {
+    client = mqtt.connect(brokerUrl, { clientId, clean: true, reconnectPeriod: 3000 });
+
+    client.on('connect', () => {
+      updateMqttPill('ok', '已连接');
+      client.subscribe(topicResp, { qos: 0 });
+      client.subscribe(topicLog, { qos: 0 });
+      // 立刻 ping + status
+      sendCmd('ping');
+      setTimeout(refreshStatus, 500);
+    });
+
+    client.on('reconnect', () => updateMqttPill('run', '重连中'));
+    client.on('error', () => updateMqttPill('err', '错误'));
+    client.on('close',  () => updateMqttPill('err', '断开'));
+
+    client.on('message', (topic, payload) => {
+    let msg;
+    try { msg = JSON.parse(payload.toString()); } catch { return; }
+
+    if (topic === topicLog) {
+      appendLog(msg.msg || payload.toString());
+    } else if (topic === topicResp) {
+      // 匹配 request_id 的 handler
+      const rid = msg.request_id || '';
+      if (respHandlers[rid]) {
+        const h = respHandlers[rid];
+        delete respHandlers[rid];
+        if (msg.ok) h.resolve(msg.data);
+        else h.reject(new Error(msg.error || 'unknown error'));
+      }
+      // 全局响应处理
+      handleGlobalResp(msg);
+    }
+  });
+  } // ← end guard else (typeof mqtt)
+
+  // ============================================================
+  // 指令函数
+  // ============================================================
+
+  function _send(action, params = {}, requestId = '') {
+    if (!requestId) requestId = Math.random().toString(36).slice(2, 10);
+    const payload = { token, action, params, request_id: requestId };
+    if (client) client.publish(topicCmd, JSON.stringify(payload));
+    return requestId;
+  }
+
+  function sendCmd(action, params = {}) {
+    const rid = _send(action, params);
+    return new Promise((resolve, reject) => {
+      respHandlers[rid] = { resolve, reject };
+      setTimeout(() => {
+        if (respHandlers[rid]) { delete respHandlers[rid]; reject(new Error('timeout')); }
+      }, 15000);
+    });
+  }
+
+  async function refreshStatus() {
+    try {
+      const data = await sendCmd('status');
+      updateTaskCard(data.task);
+    } catch (e) {
+      // ignore — 设备可能离线
+    }
+  }
+
+  function pipelineSingle() {
+    const url = document.getElementById('pipeUrl').value.trim();
+    if (!url) return alert('请输入视频 URL');
+    sendCmd('pipeline_single', {
+      url,
+      language: document.getElementById('pipeLang').value || 'en',
+      target_lang: document.getElementById('pipeTarget').value || 'zh-CN',
+      analyze: true,
+    }).then(d => toast(d.msg || '已启动'))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function pipelineSearch() {
+    const params = {
+      mode: document.getElementById('searchMode').value,
+      language: document.getElementById('searchLang').value || 'en',
+      keyword: document.getElementById('searchKeyword').value.trim(),
+      channel: document.getElementById('searchChannel').value.trim(),
+      count: parseInt(document.getElementById('searchCount').value) || 5,
+      min_duration: parseInt(document.getElementById('searchMinDur').value) || 90,
+      max_duration: parseInt(document.getElementById('searchMaxDur').value) || 600,
+    };
+    sendCmd('pipeline_search', params)
+      .then(d => toast(d.msg || '已启动'))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueSnapshot() {
+    sendCmd('queue_snapshot').then(data => {
+      const card = document.getElementById('queueCard');
+      const cur = data.current_job;
+      const pending = (data.pending || []).slice(0, 10);
+      let html = '';
+      if (cur) {
+        html += `<div class="muted" style="margin-bottom:6px">正在上传</div>`;
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(cur.title || '#' + cur.job_id)}</div><div class="pool-meta">pool ${cur.pool_id} · account ${cur.account_id}</div></div><span class="pool-status uploading">上传中</span></div>`;
+      }
+      if (pending.length) {
+        html += `<div class="muted" style="margin:10px 0 6px">待发布 (${pending.length})</div>`;
+        pending.forEach(j => {
+          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id}</div></div><span class="pool-status pending">等待</span></div>`;
+        });
+      }
+      if (!cur && !pending.length) {
+        html = '<div class="empty">队列为空 ✨</div>';
+      }
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueClear() {
+    if (!confirm('确认清空待发布队列？')) return;
+    // 注意: mqtt_bridge 里 queue 清空是 web API, 这里走 HTTP 不可达
+    // 先用 status 轮询, 实际清空建议在 PC 端 WebUI 操作
+    toast('⚠️ 队列清空请在 PC 端 WebUI 操作');
+  }
+
+  function refreshLogs() {
+    sendCmd('logs', { limit: 50 }).then(data => {
+      clearLog();
+      (data.logs || []).forEach(appendLog);
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============================================================
+  // 全局响应处理 (stop/ping 等)
+  // ============================================================
+  function handleGlobalResp(msg) {
+    // stop 指令完成后刷新任务卡片
+    if (msg.request_id && !respHandlers[msg.request_id]) {
+      // 是某个 sendCmd 的 response 已被消费, 不再处理
+      return;
+    }
+    if (msg.data && msg.data.msg === 'online') {
+      // 设备上线心跳
+      document.getElementById('deviceId').textContent = deviceId + ' 🟢';
+    }
+  }
+
+  // ============================================================
+  // UI 更新
+  // ============================================================
+
+  function updateMqttPill(state, text) {
+    const pill = document.getElementById('mqttPill');
+    pill.className = 'status-pill ' + state;
+    document.getElementById('mqttText').textContent = text;
+  }
+
+  function updateTaskCard(snap) {
+    if (!snap) return;
+    const badge = document.getElementById('taskBadge');
+    const title = document.getElementById('taskTitle');
+    const meta = document.getElementById('taskMeta');
+    const bar = document.querySelector('#taskProgress .task-progress-bar');
+
+    const progress = snap.progress || 'idle';
+    badge.className = 'task-badge ' + progress;
+    const labels = { idle: '空闲', running: '运行中', done: '完成', error: '异常' };
+    badge.textContent = labels[progress] || progress;
+
+    if (snap.running) {
+      title.textContent = `正在执行: ${snap.task_type || '任务'}`;
+      const elapsed = snap.elapsed_sec || 0;
+      meta.textContent = `任务 ID: ${snap.task_id || '—'} · 已运行 ${Math.floor(elapsed/60)}分${Math.floor(elapsed%60)}秒`;
+      bar.style.width = '100%';
+    } else {
+      title.textContent = '等待指令';
+      if (snap.errors && snap.errors.length) {
+        meta.innerHTML = `<span style="color:var(--err)">${snap.errors.slice(-2).map(esc).join('<br>')}</span>`;
+      } else {
+        meta.textContent = '—';
+      }
+      bar.style.width = '0%';
+    }
+  }
+
+  function appendLog(line) {
+    const box = document.getElementById('logBox');
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    // 简单着色
+    const l = line || '';
+    if (l.includes('✅') || l.includes('完成') || l.includes('success')) div.innerHTML = `<span class="ok">${esc(l)}</span>`;
+    else if (l.includes('❌') || l.includes('错误') || l.includes('异常') || l.includes('失败')) div.innerHTML = `<span class="err">${esc(l)}</span>`;
+    else if (l.includes('⚠️') || l.includes('警告')) div.innerHTML = `<span class="warn">${esc(l)}</span>`;
+    else if (l.includes('📥') || l.includes('📤') || l.includes('📊')) div.innerHTML = `<span class="accent">${esc(l)}</span>`;
+    else div.textContent = l;
+
+    // 超过 300 行就裁剪
+    while (box.children.length > 300) box.removeChild(box.firstChild);
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      padding: '10px 20px', borderRadius: '8px', color: 'var(--text-primary)',
+      fontSize: '13px', zIndex: 9999, maxWidth: '90vw', textAlign: 'center'
+    });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  // Tab 切换
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    // 切到状态/队列/日志时自动刷新
+    if (name === 'status') refreshStatus();
+    if (name === 'queue') queueSnapshot();
+    if (name === 'log') refreshLogs();
+  }
+
+  // 定时刷新状态 (15s)
+  setInterval(refreshStatus, 15000);
+}
+</script>
+</body>
+</html>
