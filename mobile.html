@@ -187,12 +187,12 @@ if (typeof mqtt === 'undefined') {
 
   /* Tab */
   .tab-bar {
-    display: flex; background: var(--bg-card); border: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 10px; padding: 3px; margin-bottom: 10px;
   }
   .tab {
-    flex: 1; text-align: center; padding: 9px 8px;
-    border-radius: 7px; font-size: 13px; color: var(--text-muted);
+    flex: 1 1 12%; min-width: 64px; text-align: center; padding: 9px 4px;
+    border-radius: 7px; font-size: 12px; color: var(--text-muted);
     cursor: pointer; transition: all .15s; font-weight: 500;
   }
   .tab.active { background: var(--bg-input); color: var(--text-primary); }
@@ -213,7 +213,10 @@ if (typeof mqtt === 'undefined') {
 <div class="tab-bar">
   <div class="tab active" onclick="switchTab('status')">状态</div>
   <div class="tab" onclick="switchTab('pipeline')">流水线</div>
-  <div class="tab" onclick="switchTab('queue')">发布队列</div>
+  <div class="tab" onclick="switchTab('recognize')">识别</div>
+  <div class="tab" onclick="switchTab('subtitle')">字幕</div>
+  <div class="tab" onclick="switchTab('copy')">文案</div>
+  <div class="tab" onclick="switchTab('queue')">发布</div>
   <div class="tab" onclick="switchTab('log')">日志</div>
 </div>
 
@@ -280,7 +283,105 @@ if (typeof mqtt === 'undefined') {
   </section>
 </div>
 
-<!-- ============ 发布队列 Tab ============ -->
+<!-- ============ 识别 Tab (GUI ② 对应) ============ -->
+<div class="tab-content" id="tab-recognize">
+  <section>
+    <div class="section-title">识别 + 翻译（本地视频 → SRT）</div>
+    <div class="card">
+      <input id="recVideo" type="text" placeholder="视频文件名 (output/ 下的名称)">
+      <input id="recTarget" type="text" value="zh-CN" placeholder="目标语言 zh-CN">
+      <button class="btn primary" onclick="recognizeStart()">🎙 开始识别 + 翻译</button>
+      <div class="muted" style="margin-top:6px">完成后 SRT 存入成品字幕目录，可在「字幕」页制作成品、在「文案」页生成文案。进度见日志页。</div>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">最近视频 (output/)</div>
+    <div class="card" id="recVideosCard"><div class="empty">点击下方按钮刷新</div></div>
+    <button class="btn" onclick="loadVideos()" style="margin-top:8px">🔄 刷新视频列表</button>
+  </section>
+</div>
+
+<!-- ============ 字幕 Tab (GUI ③ 对应) ============ -->
+<div class="tab-content" id="tab-subtitle">
+  <section>
+    <div class="section-title">字幕样式</div>
+    <div class="card">
+      <div class="row">
+        <input id="stFont" type="number" placeholder="字号">
+        <input id="stMargin" type="number" placeholder="底边距">
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:1;align-self:center">主色</label>
+        <input id="stPrimary" type="color" style="padding:2px;height:40px">
+        <label class="muted" style="flex:1;align-self:center">描边</label>
+        <input id="stOutline" type="color" style="padding:2px;height:40px">
+      </div>
+      <div class="row">
+        <select id="stBilingual" style="margin-bottom:8px">
+          <option value="true">双语字幕</option>
+          <option value="false">仅译文</option>
+        </select>
+        <select id="stBilingualPos" style="margin-bottom:8px">
+          <option value="src_top">原文在上</option>
+          <option value="src_bottom">原文在下</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:2;align-self:center">副字幕缩放</label>
+        <input id="stScale" type="number" step="0.05" min="0.5" max="1.2" placeholder="0.85">
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:1;align-self:center">黑框</label>
+        <select id="stBar" style="margin-bottom:8px">
+          <option value="false">关</option>
+          <option value="true">开</option>
+        </select>
+        <input id="stBarH" type="number" placeholder="黑框高度px">
+      </div>
+      <div class="row">
+        <button class="btn small" onclick="loadStyle()">🔄 读取</button>
+        <button class="btn small success" onclick="saveStyle()">💾 保存</button>
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">制作成品（烧录字幕）</div>
+    <div class="card">
+      <input id="srVideo" type="text" placeholder="视频文件名 (output/ 下的名称)">
+      <input id="srSrt" type="text" placeholder="SRT 文件名 (成品字幕目录)">
+      <button class="btn primary" onclick="subtitleRender()">▶ 开始制作成品</button>
+      <div class="muted" style="margin-top:6px">使用上方已保存的样式。制作耗时与视频长度相关，进度见日志页。</div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 文案 Tab (GUI ④ 对应) ============ -->
+<div class="tab-content" id="tab-copy">
+  <section>
+    <div class="section-title">AI 文案生成</div>
+    <div class="card">
+      <input id="cpSrt" type="text" placeholder="SRT 文件名 (成品字幕目录)">
+      <select id="cpType" style="margin-bottom:8px">
+        <option value="XIAOHONGSHU_ORAL">小红书 · 口语讲解</option>
+        <option value="XIAOHONGSHU_EXAM">小红书 · 应试讲解</option>
+        <option value="WEIBO_ORAL">微博 · 口语讲解</option>
+        <option value="WEIBO_EXAM">微博 · 应试讲解</option>
+        <option value="ZHIHU_ORAL">知乎 · 口语讲解</option>
+        <option value="ZHIHU_EXAM">知乎 · 应试讲解</option>
+        <option value="ANALYSIS_REPORT">分析报告</option>
+      </select>
+      <input id="cpLang" type="text" value="en" placeholder="字幕源语言 en/de/ja">
+      <button class="btn primary" onclick="copyGenerate()">✨ 生成文案</button>
+      <button class="btn" onclick="copyLatest()" style="margin-top:4px">📄 拉取最新文案</button>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">文案内容</div>
+    <div class="card"><div class="empty" id="cpOutput">尚未生成</div></div>
+  </section>
+</div>
+
+<!-- ============ 发布 Tab (GUI ⑤ 对应) ============ -->
 <div class="tab-content" id="tab-queue">
   <section>
     <div class="section-title">队列状态</div>
@@ -294,8 +395,9 @@ if (typeof mqtt === 'undefined') {
   <section>
     <div class="section-title">发布记录</div>
     <div class="card" id="recordsCard">
-      <div class="empty">发布完成后在此显示</div>
+      <div class="empty">点击下方按钮加载</div>
     </div>
+    <button class="btn" onclick="publishRecords()" style="margin-top:8px">🔄 刷新发布记录</button>
   </section>
 </div>
 
@@ -454,7 +556,9 @@ if (!deviceId || !token) {
       if (pending.length) {
         html += `<div class="muted" style="margin:10px 0 6px">待发布 (${pending.length})</div>`;
         pending.forEach(j => {
-          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id}</div></div><span class="pool-status pending">等待</span></div>`;
+          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id}</div></div>`
+            + `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 8px" onclick="queueCancel('${esc(j.job_id)}')">✖</button>`
+            + `<span class="pool-status pending">等待</span></div>`;
         });
       }
       if (!cur && !pending.length) {
@@ -466,9 +570,121 @@ if (!deviceId || !token) {
 
   function queueClear() {
     if (!confirm('确认清空待发布队列？')) return;
-    // 注意: mqtt_bridge 里 queue 清空是 web API, 这里走 HTTP 不可达
-    // 先用 status 轮询, 实际清空建议在 PC 端 WebUI 操作
-    toast('⚠️ 队列清空请在 PC 端 WebUI 操作');
+    sendCmd('queue_clear').then(d => { toast(`已清空 ${d.cleared} 条`); queueSnapshot(); })
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueCancel(jobId) {
+    sendCmd('queue_cancel', { job_id: jobId }).then(d => {
+      toast(d.ok ? '已取消' : '取消失败 (可能已在上传)');
+      queueSnapshot();
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function publishRecords() {
+    sendCmd('publish_records', { limit: 20 }).then(data => {
+      const card = document.getElementById('recordsCard');
+      const recs = data.records || [];
+      if (!recs.length) { card.innerHTML = '<div class="empty">暂无发布记录</div>'; return; }
+      let html = '';
+      recs.forEach(r => {
+        const okCls = r.status === 1 ? 'done' : (r.status === 2 ? 'fail' : 'pending');
+        const okTxt = r.status === 1 ? '✅ 成功' : (r.status === 2 ? '❌ 失败' : '⏳ ' + (r.status ?? ''));
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(r.title || r.video_name || '#' + (r.id ?? ''))}</div>`
+          + `<div class="pool-meta">${esc(r.platform || '')} · ${esc(r.account_name || r.account_id || '')} · ${esc(r.published_at || r.created_at || '')}</div></div>`
+          + `<span class="pool-status ${okCls}">${okTxt}</span></div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 识别 Tab ============
+  function recognizeStart() {
+    const v = document.getElementById('recVideo').value.trim();
+    if (!v) return alert('请输入视频文件名');
+    sendCmd('recognize_start', {
+      video: v,
+      target_lang: document.getElementById('recTarget').value || 'zh-CN',
+    }).then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  function loadVideos() {
+    sendCmd('videos', { limit: 10 }).then(data => {
+      const card = document.getElementById('recVideosCard');
+      const vids = data.videos || [];
+      if (!vids.length) { card.innerHTML = '<div class="empty">output/ 下暂无视频</div>'; return; }
+      let html = '';
+      vids.forEach(v => {
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(v.name)}</div>`
+          + `<div class="pool-meta">${esc(v.mtime)} · ${v.size_mb}MB</div></div>`
+          + `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 10px" onclick="document.getElementById('recVideo').value='${esc(v.name)}';document.getElementById('srVideo').value='${esc(v.name)}';toast('已填入')">选用</button></div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 字幕 Tab ============
+  function loadStyle() {
+    sendCmd('subtitle_style_get').then(d => {
+      const s = d.style || {};
+      if (s.font_size) document.getElementById('stFont').value = s.font_size;
+      if (s.margin_v !== undefined) document.getElementById('stMargin').value = s.margin_v;
+      if (s.primary_color) document.getElementById('stPrimary').value = s.primary_color;
+      if (s.outline_color) document.getElementById('stOutline').value = s.outline_color;
+      if (s.bilingual !== undefined) document.getElementById('stBilingual').value = String(s.bilingual);
+      if (s.bilingual_pos) document.getElementById('stBilingualPos').value = s.bilingual_pos;
+      if (s.secondary_scale) document.getElementById('stScale').value = s.secondary_scale;
+      if (s.bar_enabled !== undefined) document.getElementById('stBar').value = String(s.bar_enabled);
+      if (s.bar_height) document.getElementById('stBarH').value = s.bar_height;
+      toast('样式已读取');
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function saveStyle() {
+    const style = {};
+    const g = id => document.getElementById(id).value;
+    if (g('stFont')) style.font_size = parseInt(g('stFont'));
+    if (g('stMargin')) style.margin_v = parseInt(g('stMargin'));
+    if (g('stPrimary')) style.primary_color = g('stPrimary');
+    if (g('stOutline')) style.outline_color = g('stOutline');
+    style.bilingual = g('stBilingual') === 'true';
+    if (g('stBilingualPos')) style.bilingual_pos = g('stBilingualPos');
+    if (g('stScale')) style.secondary_scale = parseFloat(g('stScale'));
+    style.bar_enabled = g('stBar') === 'true';
+    if (g('stBarH')) style.bar_height = parseInt(g('stBarH'));
+    sendCmd('subtitle_style_set', { style }).then(d => toast('已保存: ' + (d.saved || []).join(', ')))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function subtitleRender() {
+    const v = document.getElementById('srVideo').value.trim();
+    const s = document.getElementById('srSrt').value.trim();
+    if (!v || !s) return alert('请填写视频和 SRT 文件名');
+    sendCmd('subtitle_render', { video: v, srt: s })
+      .then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 文案 Tab ============
+  function copyGenerate() {
+    const s = document.getElementById('cpSrt').value.trim();
+    if (!s) return alert('请输入 SRT 文件名');
+    sendCmd('copy_generate', {
+      srt: s,
+      content_type: document.getElementById('cpType').value,
+      language: document.getElementById('cpLang').value || 'en',
+    }).then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  function copyLatest() {
+    sendCmd('copy_latest').then(d => {
+      const out = document.getElementById('cpOutput');
+      if (!d.text) { out.textContent = '暂无文案'; return; }
+      out.textContent = d.text;
+      out.style.whiteSpace = 'pre-wrap';
+      out.style.textAlign = 'left';
+      out.style.fontSize = '13px';
+      toast('来自: ' + d.file);
+    }).catch(e => toast('❌ ' + e.message));
   }
 
   function refreshLogs() {
@@ -570,10 +786,12 @@ if (!deviceId || !token) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     event.target.classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
-    // 切到状态/队列/日志时自动刷新
+    // 切到状态/队列/日志/识别/字幕时自动刷新
     if (name === 'status') refreshStatus();
     if (name === 'queue') queueSnapshot();
     if (name === 'log') refreshLogs();
+    if (name === 'recognize') loadVideos();
+    if (name === 'subtitle') loadStyle();
   }
 
   // 定时刷新状态 (15s)
