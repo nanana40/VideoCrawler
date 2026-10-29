@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VideoCrawler">
+<title>VideoCrawler · 远程控制面板</title>
+<script>
+// PWA manifest (内嵌 data URI, 免额外文件) — 支持「添加到主屏幕」后以独立窗口运行
+(function () {
+  var icon = "data:image/svg+xml," + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>" +
+    "<rect width='64' height='64' rx='14' fill='#0f1420'/>" +
+    "<text x='32' y='42' font-size='26' font-family='sans-serif' font-weight='bold' " +
+    "text-anchor='middle' fill='#4e8cff'>VC</text></svg>"
+  );
+  var manifest = {
+    name: "VideoCrawler 远程控制",
+    short_name: "VC远程",
+    display: "standalone",
+    background_color: "#0f1420",
+    theme_color: "#0f1420",
+    start_url: ".",
+    icons: [{ src: icon, sizes: "any", type: "image/svg+xml", purpose: "any" }]
+  };
+  var link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = "data:application/manifest+json;charset=utf-8," +
+    encodeURIComponent(JSON.stringify(manifest));
+  document.head.appendChild(link);
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+// CDN 双保险: 主源 jsdelivr (国内可达性好), 失败时回退 unpkg
+if (typeof mqtt === 'undefined') {
+  document.write('<scr' + 'ipt src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"><\/scr' + 'ipt>');
+}
+</script>
+<style>
+  :root {
+    --bg-deep: #0f1420;
+    --bg-card: #1a2130;
+    --bg-input: #232b3d;
+    --bg-hover: #2a3448;
+    --text-primary: #d4d9e5;
+    --text-secondary: #8892a6;
+    --text-muted: #5e6677;
+    --accent: #4e8cff;
+    --accent-dim: rgba(78, 140, 255, 0.15);
+    --ok: #5da87a;
+    --warn: #b08848;
+    --err: #c97878;
+    --border: #2d3648;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    max-width: 680px; margin: 0 auto;
+    padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* 状态栏 */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px 12px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .status-pill {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    background: var(--bg-card); color: var(--text-muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+  .status-pill.ok .dot { background: var(--ok); }
+  .status-pill.err .dot { background: var(--err); }
+  .status-pill.run .dot { background: var(--accent); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+
+  /* 区块 */
+  section { margin-bottom: 14px; }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--text-muted); margin-bottom: 8px; padding-left: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .section-title::before { content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+
+  /* 卡片 */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+  }
+  .card + .card { margin-top: 10px; }
+
+  /* 按钮 */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 13px 14px; margin-bottom: 8px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text-primary);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all .12s;
+  }
+  .btn:active { transform: scale(.975); background: var(--bg-hover); }
+  .btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  .btn.success { background: rgba(93,168,122,.12); border-color: rgba(93,168,122,.3); color: var(--ok); }
+  .btn.warn { background: rgba(176,136,72,.12); border-color: rgba(176,136,72,.3); color: var(--warn); }
+  .btn.danger { background: rgba(201,120,120,.12); border-color: rgba(201,120,120,.3); color: var(--err); }
+  .btn.small { padding: 9px 10px; font-size: 13px; margin-bottom: 0; }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* 输入 */
+  input, select, textarea {
+    width: 100%; padding: 12px 14px; margin-bottom: 8px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-primary); font-size: 14px;
+    outline: none; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  /* 任务状态 */
+  .task-card { padding: 16px; }
+  .task-badge {
+    display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .task-badge.idle { background: var(--bg-input); color: var(--text-muted); }
+  .task-badge.running { background: var(--accent-dim); color: var(--accent); }
+  .task-badge.done { background: rgba(93,168,122,.15); color: var(--ok); }
+  .task-badge.error { background: rgba(201,120,120,.15); color: var(--err); }
+  .task-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .task-meta { font-size: 12px; color: var(--text-muted); }
+  .task-progress { margin-top: 10px; height: 3px; background: var(--bg-input); border-radius: 2px; overflow: hidden; }
+  .task-progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+
+  /* 日志 */
+  .log-box {
+    background: #0a0e18; border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 12px; color: var(--text-secondary);
+    max-height: 260px; overflow-y: auto;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+  .log-line { margin: 1px 0; }
+  .log-line .ok { color: var(--ok); }
+  .log-line .err { color: var(--err); }
+  .log-line .warn { color: var(--warn); }
+  .log-line .accent { color: var(--accent); }
+
+  /* 视频池 */
+  .pool-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .pool-item:last-child { border-bottom: none; }
+  .pool-title { font-size: 13px; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pool-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pool-status { font-size: 10px; padding: 2px 6px; border-radius: 6px; margin-left: 8px; }
+  .pool-status.pending { background: var(--bg-input); color: var(--text-muted); }
+  .pool-status.uploading { background: var(--accent-dim); color: var(--accent); }
+  .pool-status.done { background: rgba(93,168,122,.15); color: var(--ok); }
+  .pool-status.fail { background: rgba(201,120,120,.15); color: var(--err); }
+
+  /* 分隔 */
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* 小工具 */
+  .muted { color: var(--text-muted); font-size: 11px; }
+  .hidden { display: none !important; }
+  .empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+
+  /* Tab */
+  .tab-bar {
+    display: flex; flex-wrap: wrap; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; margin-bottom: 10px;
+  }
+  .tab {
+    flex: 1 1 12%; min-width: 64px; text-align: center; padding: 9px 4px;
+    border-radius: 7px; font-size: 12px; color: var(--text-muted);
+    cursor: pointer; transition: all .15s; font-weight: 500;
+  }
+  .tab.active { background: var(--bg-input); color: var(--text-primary); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 VideoCrawler</h1>
+  <span class="status-pill" id="mqttPill">
+    <span class="dot"></span><span id="mqttText">连接中</span>
+  </span>
+</header>
+
+<!-- ============ Tab 切换 ============ -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('status')">状态</div>
+  <div class="tab" onclick="switchTab('pipeline')">流水线</div>
+  <div class="tab" onclick="switchTab('recognize')">识别</div>
+  <div class="tab" onclick="switchTab('subtitle')">字幕</div>
+  <div class="tab" onclick="switchTab('copy')">文案</div>
+  <div class="tab" onclick="switchTab('queue')">发布</div>
+  <div class="tab" onclick="switchTab('log')">日志</div>
+</div>
+
+<!-- ============ 状态 Tab ============ -->
+<div class="tab-content active" id="tab-status">
+  <section>
+    <div class="section-title">设备</div>
+    <div class="card task-card">
+      <div class="muted" style="margin-bottom:10px">设备 ID: <code id="deviceId" style="color:var(--accent);font-size:12px"></code></div>
+      <div class="muted">Broker: broker.emqx.io (公共免费)</div>
+      <div class="muted">协议: WebSocket :8084</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">当前任务</div>
+    <div class="card task-card">
+      <span class="task-badge idle" id="taskBadge">空闲</span>
+      <div class="task-title" id="taskTitle">等待指令</div>
+      <div class="task-meta" id="taskMeta">—</div>
+      <div class="task-progress" id="taskProgress"><div class="task-progress-bar" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">快速操作</div>
+    <button class="btn warn" onclick="sendCmd('stop')">⏹ 停止当前任务</button>
+    <button class="btn" onclick="refreshStatus()">🔄 刷新状态</button>
+  </section>
+</div>
+
+<!-- ============ 流水线 Tab ============ -->
+<div class="tab-content" id="tab-pipeline">
+  <section>
+    <div class="section-title">单视频全自动</div>
+    <div class="card">
+      <input id="pipeUrl" type="text" placeholder="YouTube / TikTok 链接，或 11 位 video_id" autocomplete="off">
+      <div class="row">
+        <input id="pipeLang" type="text" value="en" placeholder="源语言 en/de/ja">
+        <input id="pipeTarget" type="text" value="zh-CN" placeholder="目标语言">
+      </div>
+      <button class="btn primary" onclick="pipelineSingle()">▶️ 开始全自动</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">搜索 & 批量</div>
+    <div class="card">
+      <select id="searchMode" style="margin-bottom:8px">
+        <option value="language">按语言</option>
+        <option value="keyword">按关键词</option>
+        <option value="channel">按频道</option>
+      </select>
+      <input id="searchLang" type="text" value="en" placeholder="语言代码">
+      <input id="searchKeyword" type="text" placeholder="关键词（keyword 模式）">
+      <input id="searchChannel" type="text" placeholder="频道 handle（channel 模式）">
+      <div class="row">
+        <input id="searchCount" type="number" value="5" min="1" max="50" placeholder="数量">
+        <input id="searchMinDur" type="number" value="90" placeholder="最短秒">
+        <input id="searchMaxDur" type="number" value="600" placeholder="最长秒">
+      </div>
+      <button class="btn primary" onclick="pipelineSearch()">🔍 开始搜索流水线</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 识别 Tab (GUI ② 对应) ============ -->
+<div class="tab-content" id="tab-recognize">
+  <section>
+    <div class="section-title">识别 + 翻译（本地视频 → SRT）</div>
+    <div class="card">
+      <input id="recVideo" type="text" placeholder="视频文件名 (output/ 下的名称)">
+      <input id="recTarget" type="text" value="zh-CN" placeholder="目标语言 zh-CN">
+      <button class="btn primary" onclick="recognizeStart()">🎙 开始识别 + 翻译</button>
+      <div class="muted" style="margin-top:6px">完成后 SRT 存入成品字幕目录，可在「字幕」页制作成品、在「文案」页生成文案。进度见日志页。</div>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">最近视频 (output/)</div>
+    <div class="card" id="recVideosCard"><div class="empty">点击下方按钮刷新</div></div>
+    <button class="btn" onclick="loadVideos()" style="margin-top:8px">🔄 刷新视频列表</button>
+  </section>
+</div>
+
+<!-- ============ 字幕 Tab (GUI ③ 对应) ============ -->
+<div class="tab-content" id="tab-subtitle">
+  <section>
+    <div class="section-title">字幕样式</div>
+    <div class="card">
+      <div class="row">
+        <input id="stFont" type="number" placeholder="字号">
+        <input id="stMargin" type="number" placeholder="底边距">
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:1;align-self:center">主色</label>
+        <input id="stPrimary" type="color" style="padding:2px;height:40px">
+        <label class="muted" style="flex:1;align-self:center">描边</label>
+        <input id="stOutline" type="color" style="padding:2px;height:40px">
+      </div>
+      <div class="row">
+        <select id="stBilingual" style="margin-bottom:8px">
+          <option value="true">双语字幕</option>
+          <option value="false">仅译文</option>
+        </select>
+        <select id="stBilingualPos" style="margin-bottom:8px">
+          <option value="src_top">原文在上</option>
+          <option value="src_bottom">原文在下</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:2;align-self:center">副字幕缩放</label>
+        <input id="stScale" type="number" step="0.05" min="0.5" max="1.2" placeholder="0.85">
+      </div>
+      <div class="row">
+        <label class="muted" style="flex:1;align-self:center">黑框</label>
+        <select id="stBar" style="margin-bottom:8px">
+          <option value="false">关</option>
+          <option value="true">开</option>
+        </select>
+        <input id="stBarH" type="number" placeholder="黑框高度px">
+      </div>
+      <div class="row">
+        <button class="btn small" onclick="loadStyle()">🔄 读取</button>
+        <button class="btn small success" onclick="saveStyle()">💾 保存</button>
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">制作成品（烧录字幕）</div>
+    <div class="card">
+      <input id="srVideo" type="text" placeholder="视频文件名 (output/ 下的名称)">
+      <input id="srSrt" type="text" placeholder="SRT 文件名 (成品字幕目录)">
+      <button class="btn primary" onclick="subtitleRender()">▶ 开始制作成品</button>
+      <div class="muted" style="margin-top:6px">使用上方已保存的样式。制作耗时与视频长度相关，进度见日志页。</div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ 文案 Tab (GUI ④ 对应) ============ -->
+<div class="tab-content" id="tab-copy">
+  <section>
+    <div class="section-title">AI 文案生成</div>
+    <div class="card">
+      <input id="cpSrt" type="text" placeholder="SRT 文件名 (成品字幕目录)">
+      <select id="cpType" style="margin-bottom:8px">
+        <option value="XIAOHONGSHU_ORAL">小红书 · 口语讲解</option>
+        <option value="XIAOHONGSHU_EXAM">小红书 · 应试讲解</option>
+        <option value="WEIBO_ORAL">微博 · 口语讲解</option>
+        <option value="WEIBO_EXAM">微博 · 应试讲解</option>
+        <option value="ZHIHU_ORAL">知乎 · 口语讲解</option>
+        <option value="ZHIHU_EXAM">知乎 · 应试讲解</option>
+        <option value="ANALYSIS_REPORT">分析报告</option>
+      </select>
+      <input id="cpLang" type="text" value="en" placeholder="字幕源语言 en/de/ja">
+      <button class="btn primary" onclick="copyGenerate()">✨ 生成文案</button>
+      <button class="btn" onclick="copyLatest()" style="margin-top:4px">📄 拉取最新文案</button>
+    </div>
+  </section>
+  <section>
+    <div class="section-title">文案内容</div>
+    <div class="card"><div class="empty" id="cpOutput">尚未生成</div></div>
+  </section>
+</div>
+
+<!-- ============ 发布 Tab (GUI ⑤ 对应) ============ -->
+<div class="tab-content" id="tab-queue">
+  <section>
+    <div class="section-title">① 成品视频 → 入队发布</div>
+    <div class="muted" style="margin-bottom:8px">⬇ 下载需手机与电脑在同一 WiFi（公网/流量模式无法下载）</div>
+    <div class="row" style="gap:8px">
+      <select id="pubAccount" style="flex:1"><option value="">加载账号中...</option></select>
+      <button class="btn small" onclick="loadAccounts()" style="width:auto;margin:0;padding:9px 10px">🔄</button>
+    </div>
+    <div class="card" id="poolCard" style="margin-top:8px">
+      <div class="empty">点击下方按钮加载候选池</div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="loadPool(false)">🔄 近72h成品</button>
+      <button class="btn small" onclick="loadPool(true)">全部</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">② 队列状态</div>
+    <div class="card" id="queueCard">
+      <div class="empty">点击刷新获取队列状态</div>
+    </div>
+    <button class="btn" onclick="queueSnapshot()" style="margin-top:8px">🔄 刷新队列</button>
+    <button class="btn danger" onclick="queueClear()" style="margin-top:4px">🗑 清空待发布</button>
+  </section>
+
+  <section>
+    <div class="section-title">③ 发布记录</div>
+    <div class="card" id="recordsCard">
+      <div class="empty">点击下方按钮加载</div>
+    </div>
+    <button class="btn" onclick="publishRecords()" style="margin-top:8px">🔄 刷新发布记录</button>
+  </section>
+</div>
+
+<!-- ============ 日志 Tab ============ -->
+<div class="tab-content" id="tab-log">
+  <section>
+    <div class="section-title">实时日志</div>
+    <div class="log-box" id="logBox"><div class="log-line muted">等待日志推送...</div></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn small" onclick="clearLog()">清空</button>
+      <button class="btn small" onclick="refreshLogs()">拉取历史</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// ============================================================
+// URL 参数 & localStorage 配对 & MQTT 连接
+// ============================================================
+const params = new URLSearchParams(location.search);
+const LS_PAIRING = 'vc_remote_pairing';
+// 设备配对: URL 参数优先并写入 localStorage; 缺参时回退 (添加到主屏幕后 query 可能丢失)
+let deviceId = params.get('device');
+let token = params.get('token');
+if (deviceId && token) {
+  try { localStorage.setItem(LS_PAIRING, JSON.stringify({ deviceId: deviceId, token: token })); } catch (e) {}
+} else {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_PAIRING) || 'null');
+    if (saved && saved.deviceId && saved.token) { deviceId = saved.deviceId; token = saved.token; }
+  } catch (e) {}
+}
+
+if (!deviceId || !token) {
+  document.body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--err)"><h2>⚠️ 缺少设备参数</h2><p class="muted">请从 VideoCrawler 的二维码重新扫码打开<br>(旧快捷方式失效时, 重新扫一次二维码即可)</p></div>';
+} else {
+  document.getElementById('deviceId').textContent = deviceId;
+  const topicCmd  = `user/${deviceId}/cmd`;
+  const topicResp = `user/${deviceId}/resp`;
+  const topicLog  = `user/${deviceId}/log`;
+
+  // MQTT over WebSocket (EMQX 公共 broker)
+  // 注意: 局部变量必须叫 client, 不能叫 mqtt —— 否则会遮蔽 CDN 的全局 mqtt 并触发 TDZ ReferenceError
+  const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+  const clientId  = 'vc_web_' + Math.random().toString(16).slice(2, 10);
+  let respHandlers = {};  // request_id → resolve/reject
+  let client = null;      // MQTT 客户端句柄 (供下方指令函数闭包引用)
+
+  if (typeof mqtt === 'undefined') {
+    // 两个 CDN 都没加载成功 (极端网络环境): 保 UI 可用, 状态明确提示
+    document.getElementById('mqttText').textContent = '⚠️ MQTT 库加载失败';
+  } else {
+    client = mqtt.connect(brokerUrl, { clientId, clean: true, reconnectPeriod: 3000 });
+
+    client.on('connect', () => {
+      updateMqttPill('ok', '已连接');
+      client.subscribe(topicResp, { qos: 0 });
+      client.subscribe(topicLog, { qos: 0 });
+      // 立刻 ping + status
+      sendCmd('ping');
+      setTimeout(refreshStatus, 500);
+    });
+
+    client.on('reconnect', () => updateMqttPill('run', '重连中'));
+    client.on('error', () => updateMqttPill('err', '错误'));
+    client.on('close',  () => updateMqttPill('err', '断开'));
+
+    client.on('message', (topic, payload) => {
+    let msg;
+    try { msg = JSON.parse(payload.toString()); } catch { return; }
+
+    if (topic === topicLog) {
+      appendLog(msg.msg || payload.toString());
+    } else if (topic === topicResp) {
+      // 匹配 request_id 的 handler
+      const rid = msg.request_id || '';
+      if (respHandlers[rid]) {
+        const h = respHandlers[rid];
+        delete respHandlers[rid];
+        if (msg.ok) h.resolve(msg.data);
+        else h.reject(new Error(msg.error || 'unknown error'));
+      }
+      // 全局响应处理
+      handleGlobalResp(msg);
+    }
+  });
+  } // ← end guard else (typeof mqtt)
+
+  // ============================================================
+  // 指令函数
+  // ============================================================
+
+  function _send(action, params = {}, requestId = '') {
+    if (!requestId) requestId = Math.random().toString(36).slice(2, 10);
+    const payload = { token, action, params, request_id: requestId };
+    if (client) client.publish(topicCmd, JSON.stringify(payload));
+    return requestId;
+  }
+
+  function sendCmd(action, params = {}) {
+    const rid = _send(action, params);
+    return new Promise((resolve, reject) => {
+      respHandlers[rid] = { resolve, reject };
+      setTimeout(() => {
+        if (respHandlers[rid]) { delete respHandlers[rid]; reject(new Error('timeout')); }
+      }, 15000);
+    });
+  }
+
+  async function refreshStatus() {
+    try {
+      const data = await sendCmd('status');
+      updateTaskCard(data.task);
+    } catch (e) {
+      // ignore — 设备可能离线
+    }
+  }
+
+  function pipelineSingle() {
+    const url = document.getElementById('pipeUrl').value.trim();
+    if (!url) return alert('请输入视频 URL');
+    sendCmd('pipeline_single', {
+      url,
+      language: document.getElementById('pipeLang').value || 'en',
+      target_lang: document.getElementById('pipeTarget').value || 'zh-CN',
+      analyze: true,
+    }).then(d => toast(d.msg || '已启动'))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function pipelineSearch() {
+    const params = {
+      mode: document.getElementById('searchMode').value,
+      language: document.getElementById('searchLang').value || 'en',
+      keyword: document.getElementById('searchKeyword').value.trim(),
+      channel: document.getElementById('searchChannel').value.trim(),
+      count: parseInt(document.getElementById('searchCount').value) || 5,
+      min_duration: parseInt(document.getElementById('searchMinDur').value) || 90,
+      max_duration: parseInt(document.getElementById('searchMaxDur').value) || 600,
+    };
+    sendCmd('pipeline_search', params)
+      .then(d => toast(d.msg || '已启动'))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueSnapshot() {
+    sendCmd('queue_snapshot').then(data => {
+      const card = document.getElementById('queueCard');
+      const cur = data.current || null;
+      const pending = (data.pending || []).slice(0, 10);
+      let html = '';
+      if (cur && cur.job_id) {
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(cur.title || '#' + cur.job_id)}</div><div class="pool-meta">pool ${cur.pool_id} · account ${cur.account_id} · ${cur.elapsed_sec || 0}s</div></div><span class="pool-status uploading">上传中</span></div>`;
+      }
+      if (pending.length) {
+        html += `<div class="muted" style="margin:10px 0 6px">待发布 (${pending.length})</div>`;
+        pending.forEach(j => {
+          html += `<div class="pool-item"><div><div class="pool-title">${esc(j.title || '#' + j.job_id)}</div><div class="pool-meta">pool ${j.pool_id} · account ${j.account_id} · ${esc(j.created_at || '')}</div></div>`
+            + `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 8px" onclick="queueCancel('${esc(j.job_id)}')">✖</button>`
+            + `<span class="pool-status pending">等待</span></div>`;
+        });
+      }
+      if ((!cur || !cur.job_id) && !pending.length) {
+        html = '<div class="empty">队列为空 ✨</div>';
+      }
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueClear() {
+    if (!confirm('确认清空待发布队列？')) return;
+    sendCmd('queue_clear').then(d => { toast(`已清空 ${d.cleared} 条`); queueSnapshot(); })
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function queueCancel(jobId) {
+    sendCmd('queue_cancel', { job_id: jobId }).then(d => {
+      toast(d.ok ? '已取消' : '取消失败 (可能已在上传)');
+      queueSnapshot();
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function publishRecords() {
+    sendCmd('publish_records', { limit: 20 }).then(data => {
+      const card = document.getElementById('recordsCard');
+      const recs = data.records || [];
+      if (!recs.length) { card.innerHTML = '<div class="empty">暂无发布记录</div>'; return; }
+      let html = '';
+      recs.forEach(r => {
+        const okCls = r.status === 1 ? 'done' : (r.status === 2 ? 'fail' : 'pending');
+        const okTxt = r.status === 1 ? '✅ 成功' : (r.status === 2 ? '❌ 失败' : '⏳ ' + (r.status ?? ''));
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(r.title || r.video_name || '#' + (r.id ?? ''))}</div>`
+          + `<div class="pool-meta">${esc(r.platform || '')} · ${esc(r.account_name || r.account_id || '')} · ${esc(r.published_at || r.created_at || '')}</div></div>`
+          + `<span class="pool-status ${okCls}">${okTxt}</span></div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 发布 Tab: 成品候选池 ============
+  function loadAccounts() {
+    sendCmd('accounts').then(data => {
+      const sel = document.getElementById('pubAccount');
+      const accs = (data.accounts || []).filter(a => a.is_active !== 0 && a.is_active !== false);
+      if (!accs.length) {
+        sel.innerHTML = '<option value="">⚠️ 无可用账号 (先在 GUI 配置)</option>';
+        return;
+      }
+      sel.innerHTML = accs.map(a =>
+        `<option value="${a.id}">${esc((a.nickname || a.uid || ('账号' + a.id)) + ' · ' + esc(a.platform || ''))}</option>`
+      ).join('');
+    }).catch(e => toast('❌ 账号加载失败: ' + e.message));
+  }
+
+  function loadPool(all) {
+    const card = document.getElementById('poolCard');
+    card.innerHTML = '<div class="empty">加载中...</div>';
+    const p = all ? { scope: 'all', limit: 50 } : { scope: 'recent', hours: 72, limit: 30 };
+    sendCmd('pool_list', p).then(data => {
+      const items = data.items || [];
+      if (!items.length) {
+        card.innerHTML = '<div class="empty">候选池为空<br><span class="muted">流水线完成烧录后会自动入池</span></div>';
+        return;
+      }
+      let html = '';
+      items.forEach(v => {
+        const st = v.publish_status === 1 ? '<span class="pool-status done">已发布</span>'
+                 : (v.publish_status === 3 ? '<span class="pool-status fail">失败</span>' : '');
+        const meta = [v.channel, v.created, v.duration_sec ? v.duration_sec + 's' : ''].filter(Boolean).join(' · ');
+        html += `<div class="pool-item"><div style="min-width:0"><div class="pool-title">${esc(v.title || ('#' + v.pool_id))}</div>`
+          + `<div class="pool-meta">${esc(meta)}</div></div>`
+          + `<div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end">`
+          + `<button class="btn small" style="width:auto;margin:0;padding:4px 8px" onclick="downloadFile(${v.pool_id},'video')">⬇ 视频</button>`
+          + (v.has_cover
+              ? `<button class="btn small" style="width:auto;margin:0;padding:4px 8px" onclick="downloadFile(${v.pool_id},'cover')">⬇ 封面</button>`
+              : '')
+          + (v.publish_status === 1 || v.publish_status === 3
+              ? st
+              : `<button class="btn small" style="width:auto;margin:0;padding:4px 8px" onclick="enqueueJob(${v.pool_id})">📤 入队</button>`)
+          + `</div></div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => { card.innerHTML = '<div class="empty">加载失败</div>'; toast('❌ ' + e.message); });
+  }
+
+  function enqueueJob(poolId) {
+    const accId = parseInt(document.getElementById('pubAccount').value);
+    if (!accId) return alert('请先选择发布账号 (无账号时先在 GUI「发布」页添加)');
+    sendCmd('queue_enqueue', { items: [{ pool_id: poolId, account_id: accId }] })
+      .then(d => { toast(`📥 已入队 ${d.enqueued} 条`); queueSnapshot(); })
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function downloadFile(poolId, kind) {
+    toast('⏳ 正在获取下载链接…');
+    sendCmd('pool_file', { pool_id: poolId, kind: kind })
+      .then(d => {
+        if (!d || !d.ok || !d.url) throw new Error((d && d.error) || '未获取到下载地址');
+        toast(`⬇ ${d.name}${d.size_mb ? ' (' + d.size_mb + 'MB)' : ''} 开始下载`);
+        // 用 a[download] 触发，避免异步 window.open 被弹窗拦截
+        try {
+          const a = document.createElement('a');
+          a.href = d.url;
+          if (d.name) a.download = d.name;
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (e) {
+          location.href = d.url;
+        }
+        setTimeout(() => toast('若打不开：请确认手机与电脑在同一 WiFi'), 3000);
+      })
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 识别 Tab ============
+  function recognizeStart() {
+    const v = document.getElementById('recVideo').value.trim();
+    if (!v) return alert('请输入视频文件名');
+    sendCmd('recognize_start', {
+      video: v,
+      target_lang: document.getElementById('recTarget').value || 'zh-CN',
+    }).then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  function loadVideos() {
+    sendCmd('videos', { limit: 10 }).then(data => {
+      const card = document.getElementById('recVideosCard');
+      const vids = data.videos || [];
+      if (!vids.length) { card.innerHTML = '<div class="empty">output/ 下暂无视频</div>'; return; }
+      let html = '';
+      vids.forEach(v => {
+        html += `<div class="pool-item"><div><div class="pool-title">${esc(v.name)}</div>`
+          + `<div class="pool-meta">${esc(v.mtime)} · ${v.size_mb}MB</div></div>`
+          + `<button class="btn small" style="width:auto;margin:0 0 0 8px;padding:4px 10px" onclick="document.getElementById('recVideo').value='${esc(v.name)}';document.getElementById('srVideo').value='${esc(v.name)}';toast('已填入')">选用</button></div>`;
+      });
+      card.innerHTML = html;
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 字幕 Tab ============
+  function loadStyle() {
+    sendCmd('subtitle_style_get').then(d => {
+      const s = d.style || {};
+      if (s.font_size) document.getElementById('stFont').value = s.font_size;
+      if (s.margin_v !== undefined) document.getElementById('stMargin').value = s.margin_v;
+      if (s.primary_color) document.getElementById('stPrimary').value = s.primary_color;
+      if (s.outline_color) document.getElementById('stOutline').value = s.outline_color;
+      if (s.bilingual !== undefined) document.getElementById('stBilingual').value = String(s.bilingual);
+      if (s.bilingual_pos) document.getElementById('stBilingualPos').value = s.bilingual_pos;
+      if (s.secondary_scale) document.getElementById('stScale').value = s.secondary_scale;
+      if (s.bar_enabled !== undefined) document.getElementById('stBar').value = String(s.bar_enabled);
+      if (s.bar_height) document.getElementById('stBarH').value = s.bar_height;
+      toast('样式已读取');
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function saveStyle() {
+    const style = {};
+    const g = id => document.getElementById(id).value;
+    if (g('stFont')) style.font_size = parseInt(g('stFont'));
+    if (g('stMargin')) style.margin_v = parseInt(g('stMargin'));
+    if (g('stPrimary')) style.primary_color = g('stPrimary');
+    if (g('stOutline')) style.outline_color = g('stOutline');
+    style.bilingual = g('stBilingual') === 'true';
+    if (g('stBilingualPos')) style.bilingual_pos = g('stBilingualPos');
+    if (g('stScale')) style.secondary_scale = parseFloat(g('stScale'));
+    style.bar_enabled = g('stBar') === 'true';
+    if (g('stBarH')) style.bar_height = parseInt(g('stBarH'));
+    sendCmd('subtitle_style_set', { style }).then(d => toast('已保存: ' + (d.saved || []).join(', ')))
+      .catch(e => toast('❌ ' + e.message));
+  }
+
+  function subtitleRender() {
+    const v = document.getElementById('srVideo').value.trim();
+    const s = document.getElementById('srSrt').value.trim();
+    if (!v || !s) return alert('请填写视频和 SRT 文件名');
+    sendCmd('subtitle_render', { video: v, srt: s })
+      .then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============ 文案 Tab ============
+  function copyGenerate() {
+    const s = document.getElementById('cpSrt').value.trim();
+    if (!s) return alert('请输入 SRT 文件名');
+    sendCmd('copy_generate', {
+      srt: s,
+      content_type: document.getElementById('cpType').value,
+      language: document.getElementById('cpLang').value || 'en',
+    }).then(d => toast(d.msg || '已启动')).catch(e => toast('❌ ' + e.message));
+  }
+
+  function copyLatest() {
+    sendCmd('copy_latest').then(d => {
+      const out = document.getElementById('cpOutput');
+      if (!d.text) { out.textContent = '暂无文案'; return; }
+      out.textContent = d.text;
+      out.style.whiteSpace = 'pre-wrap';
+      out.style.textAlign = 'left';
+      out.style.fontSize = '13px';
+      toast('来自: ' + d.file);
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  function refreshLogs() {
+    sendCmd('logs', { limit: 50 }).then(data => {
+      clearLog();
+      (data.logs || []).forEach(appendLog);
+    }).catch(e => toast('❌ ' + e.message));
+  }
+
+  // ============================================================
+  // 全局响应处理 (stop/ping 等)
+  // ============================================================
+  function handleGlobalResp(msg) {
+    // stop 指令完成后刷新任务卡片
+    if (msg.request_id && !respHandlers[msg.request_id]) {
+      // 是某个 sendCmd 的 response 已被消费, 不再处理
+      return;
+    }
+    if (msg.data && msg.data.msg === 'online') {
+      // 设备上线心跳
+      document.getElementById('deviceId').textContent = deviceId + ' 🟢';
+    }
+  }
+
+  // ============================================================
+  // UI 更新
+  // ============================================================
+
+  function updateMqttPill(state, text) {
+    const pill = document.getElementById('mqttPill');
+    pill.className = 'status-pill ' + state;
+    document.getElementById('mqttText').textContent = text;
+  }
+
+  function updateTaskCard(snap) {
+    if (!snap) return;
+    const badge = document.getElementById('taskBadge');
+    const title = document.getElementById('taskTitle');
+    const meta = document.getElementById('taskMeta');
+    const bar = document.querySelector('#taskProgress .task-progress-bar');
+
+    const progress = snap.progress || 'idle';
+    badge.className = 'task-badge ' + progress;
+    const labels = { idle: '空闲', running: '运行中', done: '完成', error: '异常' };
+    badge.textContent = labels[progress] || progress;
+
+    if (snap.running) {
+      title.textContent = `正在执行: ${snap.task_type || '任务'}`;
+      const elapsed = snap.elapsed_sec || 0;
+      meta.textContent = `任务 ID: ${snap.task_id || '—'} · 已运行 ${Math.floor(elapsed/60)}分${Math.floor(elapsed%60)}秒`;
+      bar.style.width = '100%';
+    } else {
+      title.textContent = '等待指令';
+      if (snap.errors && snap.errors.length) {
+        meta.innerHTML = `<span style="color:var(--err)">${snap.errors.slice(-2).map(esc).join('<br>')}</span>`;
+      } else {
+        meta.textContent = '—';
+      }
+      bar.style.width = '0%';
+    }
+  }
+
+  function appendLog(line) {
+    const box = document.getElementById('logBox');
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    // 简单着色
+    const l = line || '';
+    if (l.includes('✅') || l.includes('完成') || l.includes('success')) div.innerHTML = `<span class="ok">${esc(l)}</span>`;
+    else if (l.includes('❌') || l.includes('错误') || l.includes('异常') || l.includes('失败')) div.innerHTML = `<span class="err">${esc(l)}</span>`;
+    else if (l.includes('⚠️') || l.includes('警告')) div.innerHTML = `<span class="warn">${esc(l)}</span>`;
+    else if (l.includes('📥') || l.includes('📤') || l.includes('📊')) div.innerHTML = `<span class="accent">${esc(l)}</span>`;
+    else div.textContent = l;
+
+    // 超过 300 行就裁剪
+    while (box.children.length > 300) box.removeChild(box.firstChild);
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      padding: '10px 20px', borderRadius: '8px', color: 'var(--text-primary)',
+      fontSize: '13px', zIndex: 9999, maxWidth: '90vw', textAlign: 'center'
+    });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  // Tab 切换
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    // 切到状态/队列/日志/识别/字幕时自动刷新
+    if (name === 'status') refreshStatus();
+    if (name === 'queue') { queueSnapshot(); loadPool(false); loadAccounts(); }
+    if (name === 'log') refreshLogs();
+    if (name === 'recognize') loadVideos();
+    if (name === 'subtitle') loadStyle();
+  }
+
+  // 定时刷新状态 (15s)
+  setInterval(refreshStatus, 15000);
+}
+</script>
+</body>
+</html>

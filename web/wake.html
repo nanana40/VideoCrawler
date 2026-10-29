@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>VC · 唤醒开关</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:#0f1420;color:#d4d9e5;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{max-width:520px;margin:0 auto;padding:16px 14px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+h1{font-size:18px;margin:4px 0 16px;font-weight:600;color:#d4d9e5;display:flex;align-items:center;gap:8px}
+h1 .badge{font-size:10px;padding:2px 8px;border-radius:10px;background:#232b3d;color:#8892a6;font-weight:500}
+.status-row{display:flex;gap:10px;margin-bottom:14px}
+.status-card{flex:1;background:#1a2130;border:1px solid #2d3648;border-radius:12px;padding:12px 10px;text-align:center}
+.status-card .icon{font-size:22px;margin-bottom:4px}
+.status-card .label{font-size:11px;color:#8892a6;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}
+.status-card .state{font-size:13px;font-weight:600}
+.status-card.ok .state{color:#5da87a}
+.status-card.err .state{color:#c97878}
+.status-card.run .state{color:#4e8cff}
+.status-card.run .icon{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:18px 16px;margin-bottom:10px;background:#1a2130;border:1px solid #2d3648;border-radius:14px;color:#d4d9e5;font-size:16px;font-weight:600;cursor:pointer;transition:transform .08s,background .12s;user-select:none}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:#4e8cff;color:#fff;border-color:transparent}
+.btn.primary:active{background:#3a78e8}
+.btn.success{background:#1a3a2a;color:#5da87a;border-color:rgba(93,168,122,.3)}
+.btn.warn{background:#3a2f1a;color:#b08848;border-color:rgba(176,136,72,.3)}
+.btn.danger{background:#3a1a1a;color:#c97878;border-color:rgba(201,120,120,.3)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.log{background:#0a0e18;border:1px solid #2d3648;border-radius:12px;padding:12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;color:#8892a6;max-height:140px;overflow-y:auto;margin:4px 0 14px;word-break:break-all}
+.log .ok{color:#5da87a}.log .err{color:#c97878}.log .warn{color:#b08848}
+.url-box{background:#1a2130;border:1px solid #2d3648;border-radius:10px;padding:10px 12px;font-family:monospace;font-size:12px;color:#4e8cff;word-break:break-all;margin-bottom:10px;display:none}
+.tip{font-size:11px;color:#5e6677;text-align:center;margin-top:16px;line-height:1.7}
+.divider{height:1px;background:#2d3648;margin:16px 0}
+input.key{width:100%;padding:14px;background:#232b3d;border:1px solid #2d3648;border-radius:10px;color:#d4d9e5;font-size:15px;margin-bottom:10px;outline:none}
+input.key:focus{border-color:#4e8cff}
+a.external{color:#4e8cff;text-decoration:none;font-size:14px;display:inline-flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+
+<h1>🎬 VideoCrawler <span class="badge">唤醒开关</span></h1>
+
+<!-- API Key 输入（首次访问） -->
+<div id="keyPanel" style="margin-bottom:14px">
+  <input class="key" id="keyInput" type="text" placeholder="输入 API Key（保存在本机）" autocomplete="off">
+  <button class="btn primary" onclick="saveKey()">🔑 保存 Key</button>
+  <p class="tip" style="margin-top:8px">如果你是从带 ?key=xxx 的链接进来的，会自动填入</p>
+</div>
+
+<!-- 状态面板 -->
+<div id="mainPanel" style="display:none">
+  <div class="status-row">
+    <div class="status-card" id="wgCard">
+      <div class="icon">🛡️</div>
+      <div class="label">Watchdog</div>
+      <div class="state" id="wgState">检测中</div>
+    </div>
+    <div class="status-card" id="uvCard">
+      <div class="icon">⚡</div>
+      <div class="label">Web 服务</div>
+      <div class="state" id="uvState">检测中</div>
+    </div>
+    <div class="status-card" id="cfCard">
+      <div class="icon">🌐</div>
+      <div class="label">Tunnel</div>
+      <div class="state" id="cfState">检测中</div>
+    </div>
+  </div>
+
+  <!-- 公网 URL -->
+  <div class="url-box" id="pubUrlBox"></div>
+
+  <!-- 主要控制按钮 -->
+  <button class="btn success" onclick="doAction('start')">
+    ▶️ 启动 Web 服务
+  </button>
+  <button class="btn warn" onclick="doAction('restart')">
+    🔄 重启 Web 服务
+  </button>
+
+  <div class="divider"></div>
+
+  <button class="btn primary" onclick="startTunnel()">
+    🌐 生成公网访问链接
+  </button>
+  <button class="btn danger" onclick="stopTunnel()">
+    ⏹ 停止公网 Tunnel
+  </button>
+
+  <div class="divider"></div>
+
+  <!-- 快速跳转 -->
+  <button class="btn" onclick="openMainUI()">📱 打开 VideoCrawler 主界面</button>
+
+  <!-- 操作日志 -->
+  <div class="log" id="logBox">等待操作...</div>
+
+  <p class="tip">
+    此页面由 Watchdog (port 8001) 提供服务<br>
+    就算 Web 主服务 (8000) 崩了，Watchdog 还活着就能唤醒它<br>
+    电脑睡眠或关机后需要先唤醒电脑（可配合手机 WoL App 或智能插座）
+  </p>
+</div>
+
+<script>
+let KEY = '';
+let POLL = null;
+
+// ---------- Key 管理 ----------
+function saveKey() {
+  const k = document.getElementById('keyInput').value.trim();
+  if (!k) return alert('请输入 API Key');
+  KEY = k;
+  localStorage.setItem('vc_wake_key', KEY);
+  showMain();
+}
+
+// ---------- 初始化 ----------
+(function init() {
+  // URL 参数带 ?key=xxx
+  const uKey = new URLSearchParams(location.search).get('key');
+  if (uKey) {
+    KEY = uKey;
+    localStorage.setItem('vc_wake_key', KEY);
+    history.replaceState(null, '', location.pathname);
+    showMain();
+    return;
+  }
+  KEY = localStorage.getItem('vc_wake_key') || '';
+  if (KEY) showMain();
+})();
+
+function showMain() {
+  document.getElementById('keyPanel').style.display = 'none';
+  document.getElementById('mainPanel').style.display = 'block';
+  refreshAll();
+  POLL = setInterval(refreshAll, 8000);
+}
+
+// ---------- 状态刷新 ----------
+async function refreshAll() {
+  // 1. 原 watchdog :8001 已移除, 改查现行 :8000 /api/health（中间件鉴权走 ?key=）
+  try {
+    const r = await fetch(`http://${location.hostname}:8000/api/health?key=${KEY}&t=${Date.now()}`);
+    if (r.ok) {
+      setCard('wgCard', 'ok', 'Web 服务运行中');
+    } else {
+      setCard('wgCard', 'err', r.status === 401 ? 'Key 无效' : '无响应');
+    }
+  } catch (e) {
+    setCard('wgCard', 'err', '离线（请先启动 GUI）');
+  }
+
+  // 2. 主服务 health（需要 key）
+  try {
+    const r = await fetch(`http://${location.hostname}:8000/api/server/health?key=${KEY}`);
+    if (r.ok) {
+      const d = await r.json();
+      setCard('uvCard', 'ok', `运行中 · PID ${d.pid}`);
+      // Tunnel 状态
+      if (d.tunnel_running && d.tunnel_url) {
+        setCard('cfCard', 'run', `运行 · ${Math.floor(/*秒数*/ 0)}s`);
+        document.getElementById('pubUrlBox').style.display = 'block';
+        document.getElementById('pubUrlBox').innerHTML =
+          `<b>🔗 公网地址：</b><br>${d.tunnel_url}/?key=${KEY}`;
+      } else {
+        setCard('cfCard', 'err', '未启动');
+        document.getElementById('pubUrlBox').style.display = 'none';
+      }
+    } else if (r.status === 401) {
+      setCard('uvCard', 'err', 'Key 无效');
+    } else {
+      setCard('uvCard', 'err', '无响应');
+    }
+  } catch (e) {
+    setCard('uvCard', 'err', '离线（服务挂了）');
+    // 清掉 tunnel URL 显示
+    document.getElementById('pubUrlBox').style.display = 'none';
+    setCard('cfCard', 'err', '未知');
+  }
+}
+
+function setCard(id, cls, text) {
+  const el = document.getElementById(id);
+  el.className = 'status-card ' + cls;
+  el.querySelector('.state').textContent = text;
+}
+
+// ---------- 操作 ----------
+async function doAction(action) {
+  // 原 watchdog :8001 的 /start /restart 端点已随 watchdog 模块移除
+  const box = document.getElementById('logBox');
+  box.innerHTML = `<span class="warn">⚠️ 自动保活/重启已迁移: 请在 PC 上启动 GUI (start_gui.bat), Web 服务随 GUI 自动启停。</span>`;
+}
+
+async function startTunnel() {
+  // 原 /api/tunnel/start (cloudflared) 端点已从 web.main 移除
+  const box = document.getElementById('logBox');
+  box.innerHTML = `<span class="warn">⚠️ 公网隧道已迁移至 GUI 内嵌 Web + MQTT 通道: 请在 PC 启动 GUI 后, 通过 MQTT 二维码链接访问。</span>`;
+}
+
+async function stopTunnel() {
+  // 原 /api/tunnel/stop 端点已移除; 停止访问请直接关闭 GUI
+  const box = document.getElementById('logBox');
+  box.innerHTML = `<span class="warn">⚠️ 公网访问随 GUI 关闭即停止, 无需单独操作。</span>`;
+}
+
+function openMainUI() {
+  window.location.href = `http://${location.hostname}:8000/?key=${KEY}`;
+}
+</script>
+</body>
+</html>

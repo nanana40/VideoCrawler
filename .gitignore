@@ -1,0 +1,108 @@
+# =====================================================
+# MultiLangVideoCrawler .gitignore
+# =====================================================
+
+# ---------- Python虚拟环境 ----------
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# ---------- IDE / 编辑器 ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---------- 数据库 & 数据 ----------
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# ---------- 临时文件 ----------
+tmp/
+*.tmp
+*.temp
+
+# ---------- 日志 ----------
+logs/
+*.log
+
+# ---------- 输出成品 ----------
+output/
+finished_sub/
+translate_queue/
+
+# ---------- 外置二进制 ----------
+bin/ffmpeg.exe
+bin/yt-dlp.exe
+
+# ---------- 敏感配置 ----------
+api_secret.yaml.enc
+
+# ---------- 打包产物 ----------
+*.exe
+*.dist/
+*.build/
+*.onefile-build/
+Nuitka/
+*.cmd
+
+# ---------- 类型检查缓存 ----------
+.mypy_cache/
+.pytest_cache/
+
+# ---------- 系统文件 ----------
+*.bak
+*.old
+
+# ---------- Cookie / 登录态 ----------
+data/browser_cookies.txt
+data/*.txt
+
+# ---------- 便携二进制 ----------
+bin/ffmpeg/
+bin/ffmpeg-*/
+bin/nodejs/
+tools/deno/
+tools/*/
+# ---------- 外置二进制整目录（AUDIT-0004：索引曾挂 84 个 bin 文件） ----------
+bin/
+tools/
+
+# ---------- 模型（大体积，927MB） ----------
+models/
+
+# ---------- Web 隧道产物 ----------
+web/cloudflared.exe
+web/*.log
+web/*.err
+web/lt.*
+web/tunnel.*
+web/__pycache__/
+
+# ---------- 配置密钥（未入 git 的本地覆盖）----------
+config.yaml
+api_secret.yaml
+
+# ---------- 加密密钥 salt（本机唯一）----------
+.crypto_salt
+
+# ---------- 用户自建快捷方式 ----------
+*.lnk
+
+# ---------- 设备/登录态凭据（AUDIT-0001 同类） ----------
+data/mqtt_device.json
+data/xhs_storage.json
+
+# ---------- 运行时进程号 ----------
+data/*.pid

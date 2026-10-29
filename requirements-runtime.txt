@@ -1,0 +1,35 @@
+# =====================================================
+# MultiLangVideoCrawler 运行时最小依赖
+# Python 3.11+
+# 生产环境安装此清单即可，不含打包/类型检测等开发工具
+# 安装命令: pip install -r requirements-runtime.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# =====================================================
+
+# ---------- 基础核心依赖 ----------
+pyyaml>=6.0.1          # YAML配置文件解析
+pydantic>=2.5.0        # 数据模型校验
+loguru>=0.7.2          # 日志库（分文件日志）
+cryptography>=41.0.0   # 加密解密（配置文件加密）
+apsw>=3.43.0.0         # SQLite高级封装（批量缓冲写入性能更佳）
+
+# ---------- 爬虫相关 ----------
+curl_cffi>=0.15.0      # TLS指纹反爬爬虫（注意：下划线包名）
+requests>=2.31.0       # HTTP客户端（YouTube Data API v3、Vimeo/Dailymotion 官方API）
+
+# ---------- 下载相关 ----------
+yt-dlp>=2024.1.1       # 视频下载工具封装
+
+# ---------- ASR 语音识别 ----------
+faster-whisper>=1.0.0  # 本地ASR语音识别（基于Whisper，支持99种语言，VAD智能分段）
+
+# ---------- 调度与监控 ----------
+APScheduler>=3.10.0    # 后台任务调度
+watchdog>=3.0.0        # 文件系统监控
+
+# ---------- GUI 桌面界面 ----------
+PySide6>=6.5.0         # Qt6 GUI 框架（main_gui.py 入口）
+
+# ---------- MQTT 远程控制 ----------
+paho-mqtt>=1.6.1       # MQTT 客户端 (broker.emqx.io 公共免费 broker)
+pyqrcode>=1.2          # 远程连接二维码生成 (GUI 扫码显示)
+pypng>=0.0.20          # pyqrcode 输出 PNG 的必需依赖 (import 名为 png)

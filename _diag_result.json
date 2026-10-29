@@ -1,0 +1,268 @@
+{
+  "video": "D:\\Ideas\\VideoCrawler\\Vc\\output\\de\\1LPo4G6368E\\1LPo4G6368E_MEINUNG： „Brandmauer funktioniert nicht“ ｜ Anna Schneider rechnet mit der AfD-Strategie ab.mp4",
+  "cookies_len": 4053,
+  "page_url": "https://creator.xiaohongshu.com/publish/publish",
+  "title_selector_found": "input[placeholder*='标题']",
+  "wait_log": [
+    {
+      "sec": 0,
+      "sel": "input[placeholder*='标题']",
+      "visible": true
+    }
+  ],
+  "inputs": [
+    {
+      "visible": true,
+      "bbox": {
+        "x": 304.3999938964844,
+        "y": 87.20000457763672,
+        "width": 252.80001831054688,
+        "height": 24.399993896484375
+      },
+      "type": "file",
+      "placeholder": "",
+      "cls": "upload-input",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": false,
+      "bbox": {
+        "x": 912.4000244140625,
+        "y": 262.6000061035156,
+        "width": 0,
+        "height": 0
+      },
+      "type": "checkbox",
+      "placeholder": "",
+      "cls": "",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 304.3999938964844,
+        "y": 427.3999938964844,
+        "width": 499.9375305175781,
+        "height": 24
+      },
+      "type": "text",
+      "placeholder": "填写标题会有更多赞哦",
+      "cls": "d-text",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": false,
+      "bbox": {
+        "x": 558.4000244140625,
+        "y": 762,
+        "width": 0,
+        "height": 0
+      },
+      "type": "checkbox",
+      "placeholder": "",
+      "cls": "",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 343.20001220703125,
+        "y": 778.2000122070312,
+        "width": 4,
+        "height": 22
+      },
+      "type": "text",
+      "placeholder": "",
+      "cls": "d-text --color-text-title",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 667.2000122070312,
+        "y": 753.4000244140625,
+        "width": 4,
+        "height": 22
+      },
+      "type": "text",
+      "placeholder": "",
+      "cls": "d-text --color-text-title",
+      "aria": "",
+      "role": "",
+      "id": ""
+    },
+    {
+      "visible": false,
+      "bbox": {
+        "x": 558.4000244140625,
+        "y": 1280.4000244140625,
+        "width": 0,
+        "height": 0
+      },
+      "type": "checkbox",
+      "placeholder": "",
+      "cls": "",
+      "aria": "",
+      "role": "",
+      "id": ""
+    }
+  ],
+  "textareas": [],
+  "contenteditable_divs": [
+    {
+      "visible": true,
+      "bbox": {
+        "x": 304.3999938964844,
+        "y": 21.80000114440918,
+        "width": 632.0000305175781,
+        "height": 140.00000190734863
+      },
+      "role": "textbox",
+      "cls": "tiptap ProseMirror",
+      "placeholder": "",
+      "aria": "",
+      "tag": "DIV"
+    }
+  ],
+  "class_matches": {
+    "title": 70,
+    "desc": 30,
+    "content": 52,
+    "editor": 4,
+    "publish": 27,
+    "upload": 3,
+    "original": 1,
+    "topic": 5,
+    "tag": 3
+  },
+  "buttons": [
+    {
+      "visible": true,
+      "bbox": {
+        "x": 1224,
+        "y": 664,
+        "width": 40,
+        "height": 40
+      },
+      "text": "",
+      "cls": "chat-fab",
+      "disabled": false,
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 304.3999938964844,
+        "y": 226.8000030517578,
+        "width": 71.13751220703125,
+        "height": 32.00001525878906
+      },
+      "text": " 话题",
+      "cls": "contentBtn topic-btn",
+      "disabled": false,
+      "id": "topicBtn"
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 371.5375061035156,
+        "y": 232.8000030517578,
+        "width": 20,
+        "height": 20
+      },
+      "text": "",
+      "cls": "topicTemplate",
+      "disabled": false,
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 406.5375061035156,
+        "y": 226.8000030517578,
+        "width": 71.13751220703125,
+        "height": 32.00001525878906
+      },
+      "text": " 用户",
+      "cls": "contentBtn",
+      "disabled": false,
+      "id": "userBtn"
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 487.6750183105469,
+        "y": 226.8000030517578,
+        "width": 71.13748168945312,
+        "height": 32.00001525878906
+      },
+      "text": " 表情",
+      "cls": "contentBtn emoticons",
+      "disabled": false,
+      "id": "emoticonsBtn"
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 770.4000244140625,
+        "y": 376.3000183105469,
+        "width": 130,
+        "height": 32
+      },
+      "text": "智能生成章节",
+      "cls": "smart-generate-btn smart-generate-btn--disabled",
+      "disabled": true,
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 892.4000244140625,
+        "y": 946.7999877929688,
+        "width": 44,
+        "height": 20
+      },
+      "text": "更多",
+      "cls": "more",
+      "disabled": false,
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 568.4000244140625,
+        "y": 984.7999877929688,
+        "width": 28,
+        "height": 68.00006103515625
+      },
+      "text": "关联",
+      "cls": "activity-action",
+      "disabled": false,
+      "id": ""
+    },
+    {
+      "visible": true,
+      "bbox": {
+        "x": 892.4000244140625,
+        "y": 984.7999877929688,
+        "width": 28,
+        "height": 68.00006103515625
+      },
+      "text": "关联",
+      "cls": "activity-action",
+      "disabled": false,
+      "id": ""
+    }
+  ],
+  "screenshot": "D:\\Ideas\\VideoCrawler\\Vc\\_diag_screenshot.png"
+}

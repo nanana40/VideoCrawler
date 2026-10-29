@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1420">
+<title>VideoCrawler 远程控制</title>
+<style>
+  :root {
+    --bg-deep: #0f1420;
+    --bg-card: #1a2130;
+    --bg-input: #232b3d;
+    --bg-hover: #2a3448;
+    --text-primary: #d4d9e5;
+    --text-secondary: #8892a6;
+    --text-muted: #5e6677;
+    --accent: #4e8cff;
+    --accent-dim: rgba(78, 140, 255, 0.15);
+    --ok: #5da87a;
+    --warn: #b08848;
+    --err: #c97878;
+    --border: #2d3648;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* 布局 */
+  .container { max-width: 680px; margin: 0 auto; padding: 12px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 4px 12px;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .status-pill {
+    font-size: 12px; padding: 3px 10px; border-radius: 12px;
+    background: var(--bg-card); color: var(--text-muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+  .status-pill.ok .dot { background: var(--ok); }
+  .status-pill.err .dot { background: var(--err); }
+  .status-pill.run .dot { background: var(--accent); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* 卡片 */
+  .card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .field { margin-bottom: 10px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+
+  /* 输入控件 */
+  input[type=text], input[type=url], input[type=number], select {
+    width: 100%; padding: 11px 12px;
+    background: var(--bg-input); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 15px; outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+
+  /* 按钮 */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; padding: 12px 16px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 500;
+    cursor: pointer; width: 100%;
+    transition: opacity .15s, transform .05s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.secondary { background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); }
+  .btn.danger { background: var(--err); }
+  .btn.small { width: auto; padding: 8px 12px; font-size: 13px; }
+
+  /* Tab 切换 */
+  .tabs { display: flex; background: var(--bg-input); border-radius: 8px; padding: 3px; margin-bottom: 12px; }
+  .tab {
+    flex: 1; text-align: center; padding: 9px 0;
+    font-size: 13px; color: var(--text-secondary);
+    border-radius: 6px; cursor: pointer; transition: all .15s;
+  }
+  .tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* 状态卡 */
+  .stat-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .stat-item {
+    flex: 1; background: var(--bg-input); border-radius: 8px; padding: 10px;
+    text-align: center;
+  }
+  .stat-item .n { font-size: 22px; font-weight: 600; color: var(--accent); }
+  .stat-item .l { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .status-banner {
+    padding: 10px 12px; border-radius: 8px; font-size: 13px;
+    margin-bottom: 10px; display: none;
+  }
+  .status-banner.run { display: block; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(78,140,255,.3); }
+  .status-banner.ok { display: block; background: rgba(93,168,122,.12); color: var(--ok); border: 1px solid rgba(93,168,122,.3); }
+  .status-banner.err { display: block; background: rgba(201,120,120,.12); color: var(--err); border: 1px solid rgba(201,120,120,.3); }
+
+  /* 日志 */
+  #logBox {
+    background: #0a0e18; border-radius: 8px; padding: 10px;
+    height: 220px; overflow-y: auto; font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px; line-height: 1.55; color: var(--text-secondary);
+    border: 1px solid var(--border);
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #logBox .err { color: var(--err); }
+  #logBox .ok { color: var(--ok); }
+  #logBox .warn { color: var(--warn); }
+
+  /* 视频列表 */
+  .video-list .item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: var(--bg-input);
+    border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+  }
+  .video-list .item .name { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; }
+  .video-list .item .meta { color: var(--text-muted); font-size: 11px; flex-shrink: 0; }
+
+  /* 隐藏 key 输入默认显示，便于非技术用户直接用带 key 的 URL */
+  .key-bar {
+    display: flex; gap: 6px; margin-bottom: 8px;
+  }
+  .key-bar input { flex: 1; font-size: 12px; padding: 7px 10px; }
+  .key-bar .btn { width: auto; padding: 7px 12px; font-size: 12px; }
+
+  .inline-row { display: flex; gap: 8px; }
+  .inline-row .field { flex: 1; }
+
+  .footer-tip {
+    font-size: 11px; color: var(--text-muted); text-align: center;
+    padding: 16px 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎬 VideoCrawler</h1>
+    <span class="status-pill" id="connPill"><span class="dot"></span><span id="connText">连接中</span></span>
+  </header>
+
+  <!-- API key 配置（从 URL ?key=xxx 自动读取） -->
+  <div class="key-bar" style="display:none" id="keyBar">
+    <input type="text" id="apiKey" placeholder="API Key（已从 URL 自动填入）">
+    <button class="btn small secondary" onclick="saveKey()">保存</button>
+  </div>
+
+  <!-- ========== Tab 切换 ========== -->
+  <div class="tabs">
+    <div class="tab active" data-tab="single">单视频</div>
+    <div class="tab" data-tab="search">批量搜索</div>
+    <div class="tab" data-tab="videos">视频库</div>
+    <div class="tab" data-tab="publish">📤 发布</div>
+    <div class="tab" data-tab="tunnel">🌐 公网</div>
+    <div class="tab" data-tab="admin">🛠 管理</div>
+  </div>
+
+  <!-- ========== 单视频 ========== -->
+  <div class="tab-content active" id="tab-single">
+    <div class="card">
+      <h2>🎯 单视频全自动</h2>
+      <div class="field">
+        <label>YouTube URL 或 11 位 Video ID</label>
+        <input type="text" id="singleUrl" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
+      <div class="inline-row">
+        <div class="field">
+          <label>视频语言</label>
+          <select id="singleLang">
+            <option value="en">英语</option>
+            <option value="de">德语</option>
+            <option value="ja">日语</option>
+            <option value="es">西语</option>
+            <option value="fr">法语</option>
+            <option value="zh">中文</option>
+            <option value="ko">韩语</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>翻译目标</label>
+          <select id="singleTarget">
+            <option value="zh-CN">中文</option>
+            <option value="en">英语</option>
+            <option value="ja">日语</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="singleAnalyze" checked style="width:18px;height:18px">
+        <label for="singleAnalyze" style="margin:0">下载后自动生成文案</label>
+      </div>
+      <button class="btn" id="btnSingle" onclick="runSingle()">🚀 开始全自动</button>
+    </div>
+  </div>
+
+  <!-- ========== 批量搜索 ========== -->
+  <div class="tab-content" id="tab-search">
+    <div class="card">
+      <h2>🔍 批量流水线</h2>
+      <div class="field">
+        <label>搜索模式</label>
+        <select id="searchMode" onchange="toggleSearchMode()">
+          <option value="language">按语言/地区</option>
+          <option value="keyword">关键词</option>
+          <option value="channel">频道订阅</option>
+        </select>
+      </div>
+      <div class="inline-row">
+        <div class="field">
+          <label>语言</label>
+          <select id="searchLang">
+            <option value="en">英语</option>
+            <option value="de">德语</option>
+            <option value="ja">日语</option>
+            <option value="es">西语</option>
+            <option value="fr">法语</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>数量</label>
+          <input type="number" id="searchCount" value="5" min="1" max="20">
+        </div>
+      </div>
+      <div class="field" id="keywordField" style="display:none">
+        <label>关键词</label>
+        <input type="text" id="searchKeyword" placeholder="如：berlin travel vlog">
+      </div>
+      <div class="field" id="channelField" style="display:none">
+        <label>频道（@handle 或 channel ID）</label>
+        <input type="text" id="searchChannel" placeholder="@somechannel">
+      </div>
+      <button class="btn" id="btnSearch" onclick="runSearch()">🔎 开始搜索下载</button>
+    </div>
+  </div>
+
+  <!-- ========== 视频库 ========== -->
+  <div class="tab-content" id="tab-videos">
+    <div class="card">
+      <h2>📁 已下载视频</h2>
+      <div id="videoList" class="video-list"><div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">加载中...</div></div>
+      <button class="btn secondary small" onclick="loadVideos()" style="margin-top:8px">🔄 刷新</button>
+    </div>
+  </div>
+
+  <!-- ========== 自动发布 ========== -->
+  <div class="tab-content" id="tab-publish">
+    <!-- 账号选择 -->
+    <div class="card">
+      <h2>👤 发布账号</h2>
+      <div class="field">
+        <label>选择账号（所有选中的视频都会发到此账号）</label>
+        <select id="pubAccount" onchange="onPubAccountChange()"><option value="">加载中...</option></select>
+      </div>
+      <div id="pubAccountInfo" style="font-size:12px;color:var(--text-muted);display:none"></div>
+    </div>
+
+    <!-- 视频池选择 -->
+    <div class="card">
+      <h2>🎬 选择视频</h2>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn secondary small" onclick="loadPool(true)">🔄 只看未发布</button>
+        <button class="btn secondary small" onclick="loadPool(false)">📂 全部</button>
+        <button class="btn secondary small" onclick="poolSelectAll()">全选</button>
+        <button class="btn secondary small" onclick="poolDeselectAll()">清空</button>
+      </div>
+      <div id="poolList" style="max-height:260px;overflow-y:auto">加载中...</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+        已选 <span id="poolSelCount" style="color:var(--accent);font-weight:600">0</span> 个视频
+      </div>
+    </div>
+
+    <!-- 发布选项 -->
+    <div class="card">
+      <h2>⚙️ 发布选项</h2>
+      <div class="inline-row" style="align-items:center">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="pubScheduleToggle" style="width:18px;height:18px" onchange="toggleSchedule()">
+          <span>🕐 定时发布</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="pubOriginal" checked style="width:18px;height:18px">
+          <span>✅ 原创声明</span>
+        </label>
+      </div>
+      <div class="field" id="pubScheduleField" style="display:none;margin-top:8px">
+        <label>定时时间（24h 后默认）</label>
+        <input type="datetime-local" id="pubScheduleTime">
+      </div>
+      <div class="field">
+        <label>话题标签（逗号分隔，批量发布时统一使用）</label>
+        <input type="text" id="pubTags" placeholder="#AI #科技 #自媒体">
+      </div>
+    </div>
+
+    <!-- 发布按钮 -->
+    <div class="card">
+      <button class="btn" id="btnPubNow" onclick="enqueuePublish()" style="margin-bottom:8px">
+        🚀 立即发布 <span id="btnPubNowCount"></span>
+      </button>
+      <button class="btn secondary" id="btnPubQueue" onclick="enqueuePublish(true)" style="display:none">
+        ⏳ 加入发布队列
+      </button>
+    </div>
+
+    <!-- 队列状态 -->
+    <div class="card">
+      <h2>📊 发布队列 <span id="qStatusBadge" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h2>
+      <div id="qCurrent" style="display:none;padding:10px;background:var(--bg-input);border-radius:8px;margin-bottom:8px;font-size:13px">
+        <div style="color:var(--accent);font-weight:600;margin-bottom:4px">⚡ 正在发布</div>
+        <div id="qCurrentInfo">-</div>
+      </div>
+      <div id="qPendingList" style="font-size:12px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px" id="qActions">
+        <button class="btn danger small" onclick="clearQueue()">🗑 清空队列</button>
+        <button class="btn secondary small" onclick="loadQueueStatus()">🔄 刷新</button>
+      </div>
+    </div>
+
+    <!-- 发布历史 -->
+    <div class="card">
+      <h2>📋 最近发布记录</h2>
+      <div id="pubRecords" style="max-height:200px;overflow-y:auto;font-size:12px">加载中...</div>
+      <button class="btn secondary small" onclick="loadRecords()" style="margin-top:6px">🔄 刷新记录</button>
+    </div>
+  </div>
+
+  <!-- ========== 公网穿透 ========== -->
+  <div class="tab-content" id="tab-tunnel">
+    <div class="card">
+      <h2>🌐 公网穿透</h2>
+      <p style="color:var(--text-muted);font-size:13px;line-height:1.6">
+        点击下方按钮，会自动启动 Cloudflare quick tunnel，生成一个临时公网地址。<br>
+        你可以把这个地址发给任何人，他们就能从手机/电脑访问你的 VideoCrawler。<br>
+        ⚠️ 免费 quick tunnel 有 1 小时左右寿命，过期需重新启动。
+      </p>
+      <div id="tunnelStatus" style="padding:12px;border-radius:8px;background:var(--bg-input);margin:12px 0;font-size:13px;color:var(--text-muted)">
+        未启动
+      </div>
+      <div id="tunnelExpireWarn" style="display:none;padding:10px 12px;background:rgba(176,136,72,.12);color:var(--warn);border-radius:8px;margin-bottom:12px;font-size:13px">
+        ⚠️ Tunnel 已运行较久，可能快过期了。建议刷新一次。
+      </div>
+      <div id="tunnelUrl" style="display:none;padding:12px;background:var(--success-bg);border-radius:8px;margin-bottom:12px">
+        <div style="font-weight:600;color:var(--success)">✅ 公网地址</div>
+        <div style="font-family:monospace;word-break:break-all;margin-top:6px" id="tunnelFullUrl"></div>
+        <button class="btn small secondary" onclick="copyTunnelUrl()" style="margin-top:8px">📋 复制链接</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" id="btnTunnelStart" onclick="startTunnel()">▶️ 启动公网访问</button>
+        <button class="btn danger" id="btnTunnelStop" onclick="stopTunnel()" style="display:none">⏹ 停止</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 服务管理（admin） ========== -->
+  <div class="tab-content" id="tab-admin">
+    <div class="card">
+      <h2>🛠 服务状态</h2>
+      <div id="adminStatusBox" style="font-size:13px;line-height:1.8">
+        加载中...
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ 一键操作</h2>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn secondary" onclick="restartServer()">🔄 重启 Web 服务（uvicorn）</button>
+        <button class="btn secondary" onclick="location.reload()">🔃 刷新前端页面</button>
+        <button class="btn secondary" onclick="restartTunnel()">🌐 重启公网 Tunnel</button>
+        <button class="btn danger" onclick="stopTunnel()">⏹ 停止公网 Tunnel</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px">
+        提示：watchdog（port 8001）每 60 秒自动检测 uvicorn，崩了自动拉起。<br>
+        计划任务每 5 分钟检测 watchdog 本身。正常使用时你完全不需要手动重启。
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>🔗 快捷链接</h2>
+      <div style="font-size:13px;word-break:break-all;line-height:1.8">
+        <div>Watchdog: <span style="color:var(--accent)" id="wgQuickLink">检测中...</span></div>
+        <div>局域网:  <span style="color:var(--accent)" id="lanQuickLink">检测中...</span></div>
+        <div>公网:    <span style="color:var(--accent)" id="pubQuickLink">未启动</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 状态 ========== -->
+  <div class="card">
+    <h2>📊 任务状态</h2>
+    <div class="status-banner" id="statusBanner"></div>
+    <div class="stat-row">
+      <div class="stat-item"><div class="n" id="sCrawled">0</div><div class="l">已爬取</div></div>
+      <div class="stat-item"><div class="n" id="sDownloaded">0</div><div class="l">已下载</div></div>
+      <div class="stat-item"><div class="n" id="sSubtitled">0</div><div class="l">已加字幕</div></div>
+      <div class="stat-item"><div class="n" id="sAnalyzed">0</div><div class="l">文案</div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn danger small" id="btnStop" onclick="stopTask()" style="display:none">⏹ 停止</button>
+    </div>
+  </div>
+
+  <!-- ========== 日志 ========== -->
+  <div class="card">
+    <h2>📋 实时日志</h2>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="footer-tip">
+    VideoCrawler Remote · 
+    <a href="#" onclick="restartServer();return false" style="color:var(--accent);text-decoration:underline">🔄 重启服务</a>
+    · <a href="#" onclick="location.reload();return false" style="color:var(--accent);text-decoration:underline">刷新页面</a>
+  </div>
+</div>
+
+<script>
+let API_KEY = '';
+let sse = null;
+let statusPollTimer = null;
+
+// HTML 转义：顶层统一定义，供所有渲染函数使用（AUDIT-0065 提层；原 AUDIT-0052 XSS 防护）
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"`]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;","`":"&#96;"}[c]));
+}
+
+// ---------- 初始化 ----------
+function init() {
+  // 从 URL ?key=xxx 自动取 API key
+  const urlKey = new URLSearchParams(location.search).get('key');
+  if (urlKey) {
+    API_KEY = urlKey;
+    localStorage.setItem('vc_api_key', API_KEY);
+    history.replaceState(null, '', location.pathname); // 清掉 URL 中的 key
+  } else {
+    API_KEY = localStorage.getItem('vc_api_key') || '';
+  }
+  if (!API_KEY) {
+    document.getElementById('keyBar').style.display = 'flex';
+    document.getElementById('apiKey').focus();
+  } else {
+    document.getElementById('keyBar').style.display = 'none';
+    connect();
+  }
+}
+function saveKey() {
+  API_KEY = document.getElementById('apiKey').value.trim();
+  if (!API_KEY) return alert('请输入 API key');
+  localStorage.setItem('vc_api_key', API_KEY);
+  document.getElementById('keyBar').style.display = 'none';
+  connect();
+}
+
+// ---------- 连接后端 ----------
+async function connect() {
+  try {
+    const r = await fetch(`/api/health?key=${API_KEY}`);
+    if (r.ok) {
+      setConn('ok', '已连接');
+      startStatusPoll();
+      startSSE();
+      loadVideos();
+    } else if (r.status === 401) {
+      setConn('err', 'Key 无效');
+      document.getElementById('keyBar').style.display = 'flex';
+    } else {
+      setConn('err', '服务异常');
+    }
+  } catch (e) {
+    setConn('err', '无法连接');
+  }
+}
+function setConn(cls, text) {
+  const pill = document.getElementById('connPill');
+  pill.className = 'status-pill ' + cls;
+  document.getElementById('connText').textContent = text;
+}
+
+// ---------- SSE 日志流 ----------
+function startSSE() {
+  if (sse) sse.close();
+  sse = new EventSource(`/api/logs?key=${API_KEY}`);
+  sse.onmessage = (ev) => appendLog(ev.data);
+  sse.onerror = () => { /* 自动重连 */ };
+}
+
+function appendLog(line) {
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  div.textContent = line;
+  if (line.includes('✅') || line.includes('✓') || line.includes('完成')) div.className = 'ok';
+  else if (line.includes('❌') || line.includes('✗') || line.includes('失败') || line.includes('💥') || line.includes('异常') || line.includes('ERROR')) div.className = 'err';
+  else if (line.includes('⚠') || line.includes('WARN')) div.className = 'warn';
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ---------- 状态轮询 ----------
+function startStatusPoll() {
+  if (statusPollTimer) clearInterval(statusPollTimer);
+  statusPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/status?key=${API_KEY}`);
+      if (!r.ok) return;
+      const s = await r.json();
+      updateStatusUI(s);
+    } catch (e) {}
+  }, 2000);
+}
+
+function updateStatusUI(s) {
+  const banner = document.getElementById('statusBanner');
+  const btnStop = document.getElementById('btnStop');
+  const btnSingle = document.getElementById('btnSingle');
+  const btnSearch = document.getElementById('btnSearch');
+
+  // 统计（从 result 里取）
+  const r = s.result || {};
+  document.getElementById('sCrawled').textContent = r.crawled ?? 0;
+  document.getElementById('sDownloaded').textContent = r.downloaded ?? 0;
+  document.getElementById('sSubtitled').textContent = r.subtitled ?? 0;
+  document.getElementById('sAnalyzed').textContent = r.analyzed ?? 0;
+
+  if (s.running) {
+    setConn('run', '任务执行中');
+    banner.className = 'status-banner run';
+    banner.textContent = `⚙️ 运行中 [${s.task_type}] · 已 ${s.elapsed_sec}s`;
+    btnStop.style.display = 'inline-flex';
+    btnSingle.disabled = true;
+    btnSearch.disabled = true;
+  } else {
+    btnStop.style.display = 'none';
+    btnSingle.disabled = false;
+    btnSearch.disabled = false;
+    if (s.progress === 'done') {
+      setConn('ok', '空闲');
+      banner.className = 'status-banner ok';
+      banner.textContent = '✅ 上一轮任务完成';
+    } else if (s.progress === 'error') {
+      setConn('err', '有错误');
+      banner.className = 'status-banner err';
+      banner.textContent = '❌ 上一轮任务出错';
+    } else {
+      setConn('ok', '就绪');
+      banner.className = 'status-banner';
+    }
+  }
+}
+
+// ---------- Tab 切换 ----------
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    stopQueuePoll();
+    if (t.dataset.tab === 'videos') loadVideos();
+    if (t.dataset.tab === 'publish') { loadPool(); loadAccounts(); loadQueueStatus(); loadRecords(); startQueuePoll(); }
+    if (t.dataset.tab === 'tunnel') loadTunnelStatus();
+    if (t.dataset.tab === 'admin') { loadAdminStatus(); startAdminPoll(); }
+  };
+});
+
+function toggleSearchMode() {
+  const m = document.getElementById('searchMode').value;
+  document.getElementById('keywordField').style.display = m === 'keyword' ? 'block' : 'none';
+  document.getElementById('channelField').style.display = m === 'channel' ? 'block' : 'none';
+}
+
+// ---------- 触发任务 ----------
+async function runSingle() {
+  const url = document.getElementById('singleUrl').value.trim();
+  if (!url) return alert('请输入 YouTube URL');
+  const payload = {
+    url,
+    language: document.getElementById('singleLang').value,
+    target_lang: document.getElementById('singleTarget').value,
+    analyze: document.getElementById('singleAnalyze').checked,
+  };
+  await _post('/api/pipeline/single', payload);
+}
+
+async function runSearch() {
+  const mode = document.getElementById('searchMode').value;
+  const keyword = document.getElementById('searchKeyword').value.trim();
+  const channel = document.getElementById('searchChannel').value.trim();
+  if (mode === 'keyword' && !keyword) return alert('请输入关键词');
+  if (mode === 'channel' && !channel) return alert('请输入频道');
+
+  const payload = {
+    mode,
+    language: document.getElementById('searchLang').value,
+    keyword,
+    channel,
+    count: parseInt(document.getElementById('searchCount').value),
+    target_lang: 'zh-CN',
+    analyze: true,
+    min_duration: 90,
+    max_duration: 600,
+  };
+  await _post('/api/pipeline/search', payload);
+}
+
+async function stopTask() {
+  if (!confirm('确定要停止当前任务？')) return;
+  await _post('/api/stop', {});
+}
+
+async function _post(path, payload) {
+  try {
+    const r = await fetch(path + `?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      alert('❌ ' + (data.detail || '请求失败'));
+    }
+  } catch (e) {
+    alert('网络错误：' + e.message);
+  }
+}
+
+// ---------- 视频库 ----------
+async function loadVideos() {
+  const box = document.getElementById('videoList');
+  try {
+    const r = await fetch(`/api/videos?key=${API_KEY}&limit=30`);
+    const data = await r.json();
+    if (!data.videos || data.videos.length === 0) {
+      box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">还没有下载的视频</div>';
+      return;
+    }
+    box.innerHTML = data.videos.map(v => `
+      <div class="item">
+        <span class="name">📹 ${esc(v.name)}</span>
+        <span class="meta">${esc(v.size_mb)}MB · ${esc(v.mtime)}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--err);font-size:13px;text-align:center;padding:20px">加载失败</div>';
+  }
+}
+
+// =====================================================
+// 发布 Tab（自动发布队列）
+// =====================================================
+let _poolItems = [];       // 视频池列表
+let _publishAccounts = []; // 账号列表
+let _queuePollTimer = null;
+
+async function loadPool(unpublishedOnly = false) {
+  const box = document.getElementById('poolList');
+  try {
+    const url = `/api/pool?key=${API_KEY}&limit=100${unpublishedOnly ? '&only_unpublished=true' : ''}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.ok || !d.items || d.items.length === 0) {
+      box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">暂无视频，请先在 GUI 烧录</div>';
+      _poolItems = [];
+      updatePoolSelCount();
+      return;
+    }
+    _poolItems = d.items;
+    box.innerHTML = _poolItems.map(item => {
+      const statusColor = item.status_code === 1 ? 'var(--ok)' : item.status_code === 3 ? 'var(--err)' : 'var(--text-muted)';
+      const srcIcon = item.source === 'auto' ? '⚡' : '📝';
+      const pubDone = item.published_platforms && item.published_platforms.length > 0
+        ? `<span style="color:var(--ok)">✓ ${esc(item.published_platforms.map(p => p.split(':')[0]).join('/'))}</span>`
+        : `<span style="color:${statusColor}">${esc(item.status_label)}</span>`;
+      return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-input);border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:13px">
+        <input type="checkbox" class="pool-cb" data-pool-id="${item.pool_id}" style="width:16px;height:16px">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.title)}">${srcIcon} ${esc(item.title)}</span>
+        <span style="color:var(--text-muted);font-size:11px;flex-shrink:0">${item.size_mb}MB</span>
+        <span style="font-size:11px;flex-shrink:0">${pubDone}</span>
+      </label>`;
+    }).join('');
+    box.querySelectorAll('.pool-cb').forEach(cb => cb.addEventListener('change', updatePoolSelCount));
+    updatePoolSelCount();
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--err);font-size:13px;padding:16px">加载失败</div>';
+  }
+}
+function getSelectedPoolIds() { return Array.from(document.querySelectorAll('.pool-cb:checked')).map(cb => parseInt(cb.dataset.poolId)); }
+function poolSelectAll() { document.querySelectorAll('.pool-cb').forEach(cb => cb.checked = true); updatePoolSelCount(); }
+function poolDeselectAll() { document.querySelectorAll('.pool-cb').forEach(cb => cb.checked = false); updatePoolSelCount(); }
+function updatePoolSelCount() {
+  const n = getSelectedPoolIds().length;
+  document.getElementById('poolSelCount').textContent = n;
+  document.getElementById('btnPubNowCount').textContent = n > 0 ? `(${n})` : '';
+}
+
+async function loadAccounts() {
+  const sel = document.getElementById('pubAccount');
+  try {
+    const r = await fetch('/api/platforms?key=' + API_KEY);
+    const d = await r.json();
+    _publishAccounts = d.accounts || [];
+    sel.innerHTML = _publishAccounts.map(a =>
+      `<option value="${a.id}">${esc(a.platform)} · ${esc(a.nickname || a.uid || '?')}</option>`
+    ).join('');
+    if (!_publishAccounts.length) {
+      sel.innerHTML = '<option value="">暂无账号，请先在 GUI 添加</option>';
+    }
+  } catch (e) {
+    sel.innerHTML = '<option value="">加载失败</option>';
+  }
+}
+function onPubAccountChange() {
+  const id = parseInt(document.getElementById('pubAccount').value);
+  const acc = _publishAccounts.find(a => a.id === id);
+  const info = document.getElementById('pubAccountInfo');
+  if (acc) {
+    info.style.display = 'block';
+    const cs = acc.check_status === 1 ? '✅' : acc.check_status === 2 ? '❌' : '❓';
+    info.textContent = `${cs} ${esc(acc.platform)} · cookie来源: ${esc(acc.cookie_src || '?')}`;
+  } else {
+    info.style.display = 'none';
+  }
+}
+
+function toggleSchedule() {
+  const on = document.getElementById('pubScheduleToggle').checked;
+  document.getElementById('pubScheduleField').style.display = on ? 'block' : 'none';
+  if (on && !document.getElementById('pubScheduleTime').value) {
+    const d = new Date(Date.now() + 24*3600*1000);
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('pubScheduleTime').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+}
+
+async function enqueuePublish() {
+  const poolIds = getSelectedPoolIds();
+  const accountId = parseInt(document.getElementById('pubAccount').value);
+  if (poolIds.length === 0) return alert('请先在视频池选择至少一个视频');
+  if (!accountId) return alert('请选择发布账号');
+
+  const tagsRaw = document.getElementById('pubTags').value.trim();
+  const tags = tagsRaw ? tagsRaw.split(/[,，\s]+/).map(t => t.replace(/^#/, '')).filter(Boolean) : [];
+  const original = document.getElementById('pubOriginal').checked;
+  const scheduleOn = document.getElementById('pubScheduleToggle').checked;
+
+  let scheduledTs = null;
+  if (scheduleOn) {
+    const val = document.getElementById('pubScheduleTime').value;
+    if (!val) return alert('请选择定时时间');
+    scheduledTs = Math.floor(new Date(val).getTime() / 1000);
+    if (scheduledTs <= Math.floor(Date.now() / 1000)) return alert('定时时间必须在未来');
+  }
+
+  const items = poolIds.map(pid => ({
+    pool_id: pid,
+    account_id: accountId,
+    tags: tags,
+    scheduled_ts: scheduledTs,
+    original: original,
+  }));
+
+  const btn = document.getElementById('btnPubNow');
+  btn.disabled = true; btn.textContent = '入队中...';
+
+  try {
+    const r = await fetch(`/api/publish/queue?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      appendLog(`✅ 已入队 ${d.enqueued} 个视频${scheduledTs ? ' (定时)' : ''}`);
+      poolDeselectAll();
+      loadQueueStatus();
+      loadPool();
+    } else {
+      alert('入队失败: ' + (d.error || 'unknown'));
+    }
+  } catch (e) {
+    alert('网络错误: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 立即发布';
+  }
+}
+
+// ---------- 队列状态 ----------
+async function loadQueueStatus() {
+  try {
+    const r = await fetch('/api/publish/queue?key=' + API_KEY);
+    const d = await r.json();
+    const badge = document.getElementById('qStatusBadge');
+    const curBox = document.getElementById('qCurrent');
+    const curInfo = document.getElementById('qCurrentInfo');
+    const pendingBox = document.getElementById('qPendingList');
+
+    badge.textContent = d.busy ? `(${d.pending_count + (d.processing ? 1 : 0)} 个任务)` : '(空闲)';
+
+    if (d.processing && d.current && d.current.job_id) {
+      curBox.style.display = 'block';
+      curInfo.innerHTML = `job=<b>${d.current.job_id}</b> · pool=${d.current.pool_id} · account=${d.current.account_id}<br>已运行 ${d.current.elapsed_sec}s`;
+    } else {
+      curBox.style.display = 'none';
+    }
+
+    if (d.pending && d.pending.length > 0) {
+      pendingBox.innerHTML = `<div style="color:var(--text-secondary);margin-bottom:4px">⏳ 排队中 (${d.pending.length})</div>` +
+        d.pending.map(p => {
+          const timeTag = p.scheduled_ts ? `⏰ ${new Date(p.scheduled_ts*1000).toLocaleString()}` : '';
+          return `<div style="padding:6px 8px;background:var(--bg-input);border-radius:4px;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center">
+            <span>job <b>${p.job_id}</b> · pool ${p.pool_id}${p.retry ? ` · 🔄 retry ${p.retry}` : ''}</span>
+            <span style="color:var(--text-muted);font-size:11px">${timeTag}</span>
+          </div>`;
+        }).join('');
+    } else {
+      pendingBox.innerHTML = '<div style="color:var(--text-muted);font-size:13px">队列为空</div>';
+    }
+  } catch (e) {}
+}
+
+async function clearQueue() {
+  if (!confirm('确定清空待发布队列？（不会影响正在上传的视频）')) return;
+  try {
+    const r = await fetch('/api/publish/queue/clear?key=' + API_KEY, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      appendLog(`🗑 已清空 ${d.cleared} 个待发布任务`);
+      loadQueueStatus();
+    }
+  } catch (e) {}
+}
+
+function startQueuePoll() {
+  if (_queuePollTimer) return;
+  _queuePollTimer = setInterval(() => {
+    loadQueueStatus();
+    // 如果队列空了，顺便刷一下历史
+    fetch('/api/publish/queue?key=' + API_KEY).then(r => r.json()).then(d => {
+      if (!d.busy && d.history && d.history.length > 0) {
+        loadRecords();
+      }
+    }).catch(() => {});
+  }, 3000);
+}
+function stopQueuePoll() {
+  if (_queuePollTimer) { clearInterval(_queuePollTimer); _queuePollTimer = null; }
+}
+
+// ---------- 发布历史 ----------
+async function loadRecords() {
+  const box = document.getElementById('pubRecords');
+  try {
+    const r = await fetch('/api/publish-records?key=' + API_KEY + '&limit=30');
+    const d = await r.json();
+    if (!d.ok || !d.records || d.records.length === 0) {
+      box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">暂无发布记录</div>';
+      return;
+    }
+    box.innerHTML = d.records.map(r => {
+      const isOk = r.status_code === 1;
+      const icon = isOk ? '✅' : r.status_code === 2 ? '❌' : '❓';
+      const color = isOk ? 'var(--ok)' : r.status_code === 2 ? 'var(--err)' : 'var(--text-muted)';
+      return `<div style="padding:6px 8px;background:var(--bg-input);border-radius:4px;margin-bottom:3px;border-left:3px solid ${color}">
+        <div style="display:flex;justify-content:space-between;gap:6px">
+          <span style="color:${color}">${icon} <b>${esc(r.platform_label)}</b></span>
+          <span style="color:var(--text-muted);font-size:11px">${esc(r.create_time)}</span>
+        </div>
+        <div style="color:var(--text-primary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.title)}">${esc(r.title) || '(无标题)'}</div>
+        ${r.error_msg ? `<div style="color:var(--err);font-size:11px;margin-top:2px">${esc(r.error_msg)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--err);font-size:13px;padding:16px">加载失败</div>';
+  }
+}
+
+// =====================================================
+// Tunnel Tab
+// =====================================================
+let _tunnelPollTimer = null;
+
+async function loadTunnelStatus() {
+  try {
+    const r = await fetch('/api/tunnel/status?key=' + API_KEY);
+    const d = await r.json();
+    _applyTunnelUI(d);
+  } catch (e) {
+    document.getElementById('tunnelStatus').textContent = '❌ 无法连接后端';
+  }
+}
+
+
+
+async function startTunnel() {
+  const btn = document.getElementById('btnTunnelStart');
+  btn.disabled = true; btn.textContent = '启动中（最多 30s）...';
+  appendLog('🌐 请求启动 Cloudflare tunnel...');
+
+  try {
+    const r = await _post('/api/tunnel/start', {});
+    if (r.ok && r.url) {
+      appendLog(`✅ 公网地址: ${r.url}`);
+      // 立即刷新一次
+      setTimeout(loadTunnelStatus, 500);
+    } else {
+      alert('启动失败: ' + (r.error || '无法连接 api.trycloudflare.com（可能需要 VPN）'));
+      btn.disabled = false; btn.textContent = '▶️ 启动公网访问';
+    }
+  } catch (e) {
+    alert('网络错误: ' + e.message);
+    btn.disabled = false; btn.textContent = '▶️ 启动公网访问';
+  }
+}
+
+async function stopTunnel() {
+  if (!confirm('确认停止公网访问？')) return;
+  try {
+    const r = await _post('/api/tunnel/stop', {});
+    if (r.ok) {
+      appendLog('⏹ tunnel 已停止');
+      setTimeout(loadTunnelStatus, 500);
+    }
+  } catch (e) {}
+}
+
+function copyTunnelUrl() {
+  const el = document.getElementById('tunnelFullUrl');
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    alert('✅ 已复制到剪贴板');
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = el.textContent;
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('✅ 已复制');
+  });
+}
+
+async function restartServer() {
+  if (!confirm('🔄 确认重启 Web 服务？\n\n5 秒后页面会自动刷新。')) return;
+  appendLog('🔄 请求重启服务...');
+  try {
+    const r = await _post('/api/server/restart', {});
+    if (r.ok) {
+      appendLog('✅ 重启指令已发送，等待 5 秒自动刷新...');
+      setTimeout(() => location.reload(), 5000);
+    } else {
+      alert('重启失败: ' + (r.error || 'unknown'));
+    }
+  } catch (e) {
+    alert('网络错误（服务可能已关闭）: ' + e.message);
+  }
+}
+
+// =====================================================
+// Admin Tab — 服务管理
+// =====================================================
+let _adminPollTimer = null;
+
+async function loadAdminStatus() {
+  try {
+    const r = await fetch(`/api/server/health?key=${API_KEY}`);
+    const d = await r.json();
+    if (!d.ok) { document.getElementById('adminStatusBox').innerHTML = '<span style="color:var(--err)">连接失败</span>'; return; }
+
+    const wg = d.watchdog_alive ? '<span style="color:var(--ok)">✅</span>' : '<span style="color:var(--err)">❌</span>';
+    const uv = d.pid ? `<span style="color:var(--ok)">✅</span> PID ${d.pid}` : '<span style="color:var(--err)">❌</span>';
+    const tun = d.tunnel_running
+      ? `<span style="color:var(--ok)">✅</span> 运行中 · ${d.tunnel_url ? '<span style="color:var(--text-muted);font-size:11px">('+d.tunnel_url+')</span>' : ''}`
+      : '<span style="color:var(--text-muted)">⚪ 未启动</span>';
+    const task = d.running ? `<span style="color:var(--accent)">⚙️ ${d.running_task} 执行中</span>` : '<span style="color:var(--ok)">✅ 空闲</span>';
+
+    document.getElementById('adminStatusBox').innerHTML = `
+      ${wg} Watchdog (port 8001) · 守护进程
+      <br>${uv} Uvicorn (port 8000) · Web 主服务
+      <br>${tun} Cloudflare Tunnel · 公网穿透
+      <br>${task} 当前任务
+      <br><br><span style="color:var(--text-muted);font-size:11px">
+        系统: ${d.platform ? d.platform.split(' ')[0] : '-'} · Python ${d.python} · API Key ${d.api_key_masked}
+      </span>
+    `;
+
+    // 快捷链接
+    document.getElementById('wgQuickLink').textContent = 'http://<本机IP>:8001/health';
+    document.getElementById('lanQuickLink').textContent = d.local_url || d.lan_url || 'http://<本机IP>:8000/?key=' + API_KEY;
+    document.getElementById('pubQuickLink').textContent = d.tunnel_url ? d.tunnel_url + '/?key=' + API_KEY : '未启动';
+
+  } catch (e) {
+    document.getElementById('adminStatusBox').innerHTML = '<span style="color:var(--err)">❌ 无法连接主服务（uvicorn 可能已挂）</span><br><br>请确认电脑仍在运行，或手动重启 start_web.bat';
+  }
+}
+
+function startAdminPoll() {
+  if (_adminPollTimer) clearInterval(_adminPollTimer);
+  _adminPollTimer = setInterval(loadAdminStatus, 10000);
+}
+
+function restartTunnel() {
+  stopTunnel();
+  setTimeout(() => startTunnel(), 2000);
+}
+
+function _applyTunnelUI(d) {
+  const statusEl = document.getElementById('tunnelStatus');
+  const urlEl = document.getElementById('tunnelUrl');
+  const fullEl = document.getElementById('tunnelFullUrl');
+  const btnStart = document.getElementById('btnTunnelStart');
+  const btnStop = document.getElementById('btnTunnelStop');
+  const expireWarn = document.getElementById('tunnelExpireWarn');
+
+  if (d.running && d.url) {
+    const mins = Math.floor(d.uptime_sec / 60);
+    statusEl.innerHTML = `🟢 运行中 · 已 ${mins}分${Math.floor(d.uptime_sec % 60)}秒`;
+    urlEl.style.display = 'block';
+    fullEl.textContent = d.url;
+    btnStart.style.display = 'none';
+    btnStop.style.display = 'inline-block';
+    btnStart.disabled = false;
+    // 过期提醒：超过 55 分钟
+    expireWarn.style.display = mins > 55 ? 'block' : 'none';
+    // 持续轮询状态 + 过期检测
+    if (!_tunnelPollTimer) {
+      _tunnelPollTimer = setInterval(loadTunnelStatus, 30000);
+    }
+  } else {
+    statusEl.innerHTML = '⚪ 未启动（cloudflared.exe 已内置，一键生成公网地址）';
+    urlEl.style.display = 'none';
+    expireWarn.style.display = 'none';
+    btnStart.style.display = 'inline-block';
+    btnStop.style.display = 'none';
+    btnStart.disabled = false;
+    if (_tunnelPollTimer) { clearInterval(_tunnelPollTimer); _tunnelPollTimer = null; }
+  }
+}
+
+init();
+</script>
+</body>
+</html>
